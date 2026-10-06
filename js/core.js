@@ -135,6 +135,21 @@
   // ---------------- API ke Google Apps Script ----------------
   U.gasUrl = () => (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || '';
   U.siapApi = () => /^https:\/\/script\.google(usercontent)?\.com\//.test(U.gasUrl()) && !/GANTI_DENGAN/.test(U.gasUrl()) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(U.gasUrl());
+  // Baca respons Apps Script. Bila bukan JSON (halaman error Google), jelaskan penyebab & cara memperbaikinya.
+  async function bacaJson(res) {
+    const teks = await res.text();
+    try { return JSON.parse(teks); } catch (e) { /* bukan JSON */ }
+    console.error('Respons Apps Script bukan JSON (HTTP ' + res.status + '):\n' + teks.slice(0, 3000));
+    const t = teks.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&#39;|&quot;/g, "'").replace(/\s+/g, ' ').trim();
+    let pesan;
+    if (/already been declared|sudah dideklarasikan|has already been declared/i.test(t)) pesan = 'Kode.gs tertempel dua kali (ada dua file berisi kode yang sama di Apps Script). Hapus salah satunya, simpan, lalu deploy Versi baru.';
+    else if (/(doPost|doGet)/.test(t) && /(not found|tidak ditemukan|tidak dapat ditemukan)/i.test(t)) pesan = 'Fungsi doPost tidak ada di versi yang sedang di-deploy. Pastikan seluruh Kode.gs sudah ditempel & disimpan (Ctrl+S), lalu Terapkan → Kelola deployment → ✏️ → Versi baru → Terapkan.';
+    else if (/authoriz|otorisasi|perlu izin|izin diperlukan/i.test(t)) pesan = 'Apps Script belum diberi izin. Di editor, jalankan setupAplikasi sekali (Tinjau izin → Izinkan), lalu deploy Versi baru.';
+    else if (res.status === 404 || /unable to open the file|tidak dapat membuka file|file tidak dapat dibuka|page not found|halaman tidak ditemukan/i.test(t)) pesan = 'Alamat Apps Script tidak ditemukan. Periksa GAS_URL di js/config.js — harus URL Aplikasi web yang berakhiran /exec.';
+    else if (/accounts\.google\.com|ServiceLogin/i.test(teks) || /sign in|login|masuk ke akun/i.test(t)) pesan = 'Web App meminta login Google. Ubah deployment: Jalankan sebagai "Saya", Akses "Siapa saja", lalu deploy Versi baru.';
+    else pesan = 'Apps Script mengirim halaman error' + (t ? ': "' + t.slice(0, 180) + '"' : '') + '. Cek deployment Apps Script.';
+    throw Object.assign(new Error(pesan), { kode: 'SERVER', detail: teks.slice(0, 3000) });
+  }
   U.api = async (action, payload, opt) => {
     opt = opt || {};
     if (!U.siapApi()) throw Object.assign(new Error('URL backend belum diisi di js/config.js'), { kode: 'CONFIG' });
@@ -150,8 +165,7 @@
     } catch (e) {
       throw Object.assign(new Error(e.name === 'AbortError' ? 'Server terlalu lama merespons' : 'Tidak ada koneksi internet'), { kode: 'NET' });
     } finally { clearTimeout(to); }
-    let j;
-    try { j = await res.json(); } catch (e) { throw Object.assign(new Error('Respons server tidak valid (cek deployment Apps Script)'), { kode: 'NET' }); }
+    const j = await bacaJson(res);
     if (!j.success) throw Object.assign(new Error(j.message || 'Terjadi kesalahan'), { kode: j.code || 'APP', data: j.data });
     return j.data;
   };
@@ -161,7 +175,7 @@
     const to = setTimeout(() => ctrl.abort(), (opt && opt.timeout) || 30000);
     try {
       const res = await fetch(U.gasUrl() + '?' + new URLSearchParams(params).toString(), { signal: ctrl.signal, redirect: 'follow' });
-      const j = await res.json();
+      const j = await bacaJson(res);
       if (!j.success) throw Object.assign(new Error(j.message || 'Terjadi kesalahan'), { kode: j.code || 'APP' });
       return j.data;
     } catch (e) {
@@ -182,7 +196,7 @@
     box.appendChild(el);
     const tutup = () => { el.classList.add('out'); setTimeout(() => el.remove(), 220); };
     el.onclick = tutup;
-    setTimeout(tutup, ms || (type === 'bad' ? 5200 : 3000));
+    setTimeout(tutup, ms || (type === 'bad' ? Math.max(5200, String(msg).length * 70) : 3000));
   };
 
   // ---------------- Modal / drawer / konfirmasi ----------------
