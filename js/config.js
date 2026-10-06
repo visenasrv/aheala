@@ -3,5 +3,5 @@
    Tempel URL Web App Google Apps Script (berakhiran /exec)
    ============================================================ */
 window.APP_CONFIG = {
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbwRsr9twsDCJ5_5knl2QMjk8e1GUk4L5HRW3l8zCmfuRetDcoM5BzfF9DS0ZdGfxKGxFQ/exec'
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbweETmv55Sd7heDGgO40YirC8zGFCxfxn3mNrft1MdnU4nNab7-Gmsxx_jynuGuYkjw/exec'
 };
