@@ -256,7 +256,7 @@ Selama mode demo berlaku hal-hal berikut:
 ### D2. Urutan pengaturan yang disarankan
 | No | Menu | Yang diisi |
 |---|---|---|
-| 1 | **Pengaturan → Identitas** | Nama aplikasi, nama lembaga, Nama unit, **No. Unit** (dipakai di nomor piagam, contoh `001/AHE-SGT/X/2026`), **Kepala Unit** (penanda tangan kuitansi & piagam), kecamatan, desa/kelurahan, alamat (jalan, RT, nomor), logo, **gambar tanda tangan** (PNG; foto/scan di kertas putih juga bisa), dan **warna utama** |
+| 1 | **Pengaturan → Identitas** | Nama aplikasi, nama lembaga, Nama unit, **No. Unit** (4 digit angka, contoh `3924`; dipakai di nomor piagam, contoh `001/AHE-3924/X/2026`), **Kepala Unit** (penanda tangan kuitansi & piagam), kecamatan, desa/kelurahan, alamat (jalan, RT, nomor), logo, **gambar tanda tangan** (PNG; foto/scan di kertas putih juga bisa), dan **warna utama** |
 | 2 | **Pengaturan → SPP** | Tanggal jatuh tempo, **Mulai pencatatan SPP** (isi bulan ini agar bulan-bulan lama tidak dianggap menunggak), lalu **Atur tarif** |
 | 3 | **Pengaturan → Kehadiran** | **Mulai pencatatan kehadiran** (isi tanggal mulai pakai aplikasi), batas absen (bawaan 10 hari les), batas siswa per guru (bawaan 10) |
 | 4 | **Guru** | Tambah guru dan kata sandinya. Guru login dengan memilih namanya dari daftar. |
@@ -264,11 +264,19 @@ Selama mode demo berlaku hal-hal berikut:
 | 6 | **Hari Libur** | Tandai libur khusus (Senin–Jumat selain libur otomatis dianggap hari les) |
 | 7 | **Landing Page** | Foto **banner** (landscape, ideal 1920×800), teks, foto kegiatan, video, lokasi, dan footer (link Facebook/Instagram/YouTube/TikTok). Di bagian **Lokasi & Peta**, tempel link Google Maps (Bagikan → Salin link) lalu klik **Pasang**, dan titik merah muncul di peta. |
 | 8 | **Pengaturan → Piagam** | Unggah gambar template piagam Ahe dan Ala, lalu **Atur Posisi Teks** (kalibrasi). Nomor, Kepala Unit, Unit Pembelajaran, dan Desa/Kelurahan terisi otomatis dari Identitas. |
-| 9 | **Pengaturan → WhatsApp** | Sambungkan Fonnte. Ikuti **PANDUAN-FONNTE.md** (terpisah). |
+| 9 | **Pengaturan → WhatsApp** | Sambungkan Fonnte. Ikuti **PANDUAN-FONNTE.md** (terpisah). Tiap template pesan otomatis bisa **dinonaktifkan** satu per satu lewat sakelar di atas kotak template. |
 
 ### D3. Bagikan ke guru dan orang tua
 - **Guru:** kirim link `.../app.html` dan kata sandinya. Guru bisa mengganti sandinya sendiri di menu **Akun Saya**. Di HP, guru bisa memilih **"Tambahkan ke layar utama"** di menu browser agar aplikasi terbuka seperti app biasa.
 - **Orang tua / umum:** bagikan link utama `https://USERNAME.github.io/les-aheala/`. Pendaftaran bisa dibuka atau ditutup dari **Pengaturan → Pendaftaran**.
+
+### D4. Fitur harian yang sering dipakai (v1.2)
+- **Filter periode** (Dashboard, Kehadiran, SPP): klik tombol periode, pilih satu bulan, atau klik bulan awal lalu bulan akhir untuk rentang. Tombol cepat **Satu tahun**, **Bulan ini**, **3/6 bulan terakhir** juga tersedia.
+- **Kehadiran → Per Hari:** jumlah siswa yang diajar tiap guru pada tanggal tertentu, lengkap dengan nama siswanya.
+- **Siswa → Naik 1 Level:** muncul konfirmasi "Naikkan ke Level X?" dengan pilihan **Iya** / **Tidak**. Siswa yang baru diubah tetap tampil (ditandai) walau tidak lagi cocok dengan filter.
+- **Siswa → Lulus / Alumni:** siswa yang dituntaskan pindah ke tab ini. Lulusan Les Baca yang lanjut berhitung: centang lalu **Lanjut Berhitung**, dan siswa kembali ke tab **Siswa Les**.
+- **Landing page** menampilkan jumlah murid Les Baca, Les Berhitung, alumni, dan guru secara otomatis (bagian **Jumlah Murid** di editor Landing Page bisa diubah judulnya atau disembunyikan).
+- **Masuk dari landing page** saat masih login: halaman login tetap tampil dengan pilihan **Lanjutkan** atau **Keluar** (untuk berganti akun).
 
 ---
 

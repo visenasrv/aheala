@@ -851,3 +851,51 @@ body.public .ann { margin-top: 28px; }
 .vcard .vlink:hover { background: #D8E7FD; }
 .fb-cek { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #1c1e21; }
 .fb-cek iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.tbl tr.baru-ubah td { background: #FFFAEB; }
+.tbl tr.baru-ubah td:first-child { box-shadow: inset 3px 0 0 var(--sun); }
+@media (max-width: 1099px) { .tbl-cards tr.baru-ubah { border-color: var(--sun); background: #FFFAEB; } }
+.sesi-lama { border-color: var(--ok-50); background: #F3FBF5; }
+.sesi-lama > .row-gap > .ic { color: var(--ok-700); width: 26px; height: 26px; }
+.tab.tpl-mati { opacity: .6; text-decoration: line-through; text-decoration-thickness: 1px; }
+.tpl-sw { display: flex; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ph-card.kosong { opacity: .62; }
+.ph-n { text-align: right; line-height: 1; }
+.ph-n b { font-family: var(--f-head); font-size: 30px; font-weight: 900; color: var(--p-700); display: block; }
+.ph-n small { font-size: 11px; color: var(--text-2); font-weight: 700; }
+.ph-n.banyak b { color: var(--accent-700); }
+.ph-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.bar.warn i { background: var(--sun); }
+/* Statistik murid di landing */
+.stat-sec { padding-top: 64px; }
+.stat-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.stat-item { position: relative; overflow: hidden; display: flex; gap: 16px; align-items: center; background: #fff; border: 1px solid var(--line-2); border-radius: 22px; padding: 22px 20px; box-shadow: var(--sh-1); }
+.stat-item::after { content: ''; position: absolute; right: -30px; bottom: -30px; width: 110px; height: 110px; border-radius: 50%; background: var(--p-50); opacity: .7; }
+.stat-item > * { position: relative; z-index: 1; }
+.stat-num { font-family: var(--f-head); font-size: clamp(34px, 3.4vw, 44px); font-weight: 900; line-height: 1; color: var(--p-800); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.stat-item b { display: block; margin-top: 6px; font-size: 15px; }
+.stat-item small { display: block; color: var(--text-2); font-size: 12px; margin-top: 2px; }
+.stat-note { text-align: center; margin-top: 18px; color: var(--text-2); font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+@media (max-width: 767px) { .stat-band { grid-template-columns: 1fr 1fr; gap: 10px; } .stat-item { flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; } .stat-item b { font-size: 13px; } }
+/* Pemilih periode */
+.periode-btn { min-height: 40px; gap: 8px; font-weight: 700; }
+.periode-btn .ic:first-child { color: var(--p); }
+.per-year { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.per-year b { font-family: var(--f-head); font-size: 20px; }
+.per-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.per-m { border: 1.5px solid var(--line-2); background: #fff; border-radius: 12px; padding: 12px 6px; font-weight: 700; font-size: 14px; color: var(--text); cursor: pointer; transition: background .12s, border-color .12s; }
+.per-m:hover:not(:disabled) { border-color: var(--p-300); background: var(--p-50); }
+.per-m:disabled { opacity: .35; cursor: not-allowed; }
+.per-m.kini { border-style: dashed; border-color: var(--p-300); }
+.per-m.in { background: var(--p-100); border-color: var(--p-100); color: var(--p-800); }
+.per-m.awal, .per-m.akhir, .per-m.awal:hover:not(:disabled), .per-m.akhir:hover:not(:disabled) { background: var(--p); border-color: var(--p); color: var(--on-p); }
+.per-m.in:hover:not(:disabled) { background: var(--p-100); color: var(--p-800); }
+.per-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.per-sel { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+@media (min-width: 560px) { .per-grid { grid-template-columns: repeat(4, 1fr); } }
+.modal.sm { max-width: 480px; }
+.mstrip { display: flex; flex-wrap: wrap; gap: 4px; max-width: 520px; }
+.mchip { font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 7px; background: var(--surface-2); color: var(--text-3); border: 1px solid var(--line-2); white-space: nowrap; }
+.mchip.ok { background: var(--ok-50); color: var(--ok-700); border-color: #BBE5C8; }
+.mchip.no { background: var(--bad-50); color: var(--bad-700); border-color: #F7C2C2; }
+@media (max-width: 1099px) { .tbl-cards td[data-l="Per bulan"] { flex-direction: column; align-items: flex-start; } .tbl-cards td[data-l="Per bulan"] .mstrip { max-width: none; } }

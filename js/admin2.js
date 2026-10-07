@@ -151,18 +151,16 @@
       const ui = A.ui.hadir = A.ui.hadir || { dari: U.ymNow(), sampai: U.ymNow(), bulan: U.ymNow(), q: '', prog: '', absen: false, kTgl: U.today(), kGuru: '' };
       const tab = params[0] || 'siswa';
       const ambang = +d.settings.ambang_siswa_banyak || 10;
-      const bln = []; for (let i = -24; i <= 0; i++) bln.push(U.addMonths(U.ymNow(), i));
       if (ui.bulan < ui.dari || ui.bulan > ui.sampai) ui.bulan = ui.sampai;
       view.innerHTML = `<div class="page-head"><div><h1>Kehadiran & Presensi</h1><p>Rekap hari les Senin–Jumat (hari libur khusus tidak dihitung). Unduh dalam Excel atau PDF.</p></div>
-        <div class="actions"><select class="input" id="h-dari" style="min-height:40px;width:auto" aria-label="Dari bulan">${bln.map((b) => `<option value="${b}" ${b === ui.dari ? 'selected' : ''}>${U.bulan(b)}</option>`).join('')}</select><span class="muted">s/d</span>
-          <select class="input" id="h-sampai" style="min-height:40px;width:auto" aria-label="Sampai bulan">${bln.map((b) => `<option value="${b}" ${b === ui.sampai ? 'selected' : ''}>${U.bulan(b)}</option>`).join('')}</select>
-          ${tab !== 'koreksi' ? `<button class="btn btn-light btn-sm" data-ex="xlsx" style="color:#15803D">${icon('file-spreadsheet')} Excel</button><button class="btn btn-light btn-sm" data-ex="pdf" style="color:var(--bad-700)">${icon('file-text')} PDF</button>` : ''}</div></div>
-        <div class="utabs mb-16">${[['guru', 'Rekap Guru', 'users'], ['khusus', 'Guru > ' + ambang + ' Siswa/Hari', 'star'], ['siswa', 'Rekap Siswa', 'graduation-cap'], ['koreksi', 'Koreksi', 'square-pen']].map(([k, l, ic]) => `<a class="utab ${tab === k ? 'on' : ''}" href="#/kehadiran/${k}">${icon(ic)} ${l}</a>`).join('')}</div>
+        <div class="actions">${tab !== 'hari' && tab !== 'koreksi' ? U.tombolPeriode('h-per', ui.dari, ui.sampai) : ''}
+          ${tab !== 'koreksi' && tab !== 'hari' ? `<button class="btn btn-light btn-sm" data-ex="xlsx" style="color:#15803D">${icon('file-spreadsheet')} Excel</button><button class="btn btn-light btn-sm" data-ex="pdf" style="color:var(--bad-700)">${icon('file-text')} PDF</button>` : ''}</div></div>
+        <div class="utabs mb-16">${[['hari', 'Per Hari', 'calendar'], ['guru', 'Rekap Guru', 'users'], ['khusus', 'Guru > ' + ambang + ' Siswa/Hari', 'star'], ['siswa', 'Rekap Siswa', 'graduation-cap'], ['koreksi', 'Koreksi', 'square-pen']].map(([k, l, ic]) => `<a class="utab ${tab === k ? 'on' : ''}" href="#/kehadiran/${k}">${icon(ic)} ${l}</a>`).join('')}</div>
         <div id="h-isi"><div class="stack"><div class="sk" style="height:110px"></div><div class="sk" style="height:300px"></div></div></div>`;
-      $('#h-dari').onchange = (e) => { ui.dari = e.target.value; if (ui.sampai < ui.dari) ui.sampai = ui.dari; A.render(); };
-      $('#h-sampai').onchange = (e) => { ui.sampai = e.target.value; if (ui.dari > ui.sampai) ui.dari = ui.sampai; A.render(); };
+      const hp = $('#h-per'); if (hp) hp.onclick = async () => { const r = await U.pilihPeriode({ dari: ui.dari, sampai: ui.sampai, max: U.ymNow().slice(0, 4) + '-12', min: '2020-01' }); if (r) { ui.dari = r.dari; ui.sampai = r.sampai; ui.bulan = r.sampai > U.ymNow() ? (r.dari > U.ymNow() ? r.dari : U.ymNow()) : r.sampai; A.render(); } };
       $$('[data-ex]').forEach((b) => b.onclick = () => ekspor(tab, b.dataset.ex));
       if (tab === 'koreksi') return koreksi($('#h-isi'), ui);
+      if (tab === 'hari') return perHari($('#h-isi'), ui);
       A.ambilRekap(ui.dari, ui.sampai).then((data) => {
         const el = $('#h-isi'); if (!el || A.rute().nama !== 'kehadiran') return;
         A._rekapTerakhir = data;
@@ -248,6 +246,48 @@
       $('#h-absen', el).onchange = (e) => { ui.absen = e.target.checked; ul(); };
       $('[data-absen]', el).onclick = () => { ui.absen = !ui.absen; ul(); };
   }
+  // Kehadiran per hari: berapa siswa yang diajar setiap guru pada tanggal tertentu
+  function perHari(el, ui) {
+    if (!ui.hTgl) ui.hTgl = U.today();
+    const t = ui.hTgl, ym = t.slice(0, 7);
+    const ambang = +D().settings.ambang_siswa_banyak || 10;
+    const sumber = ym === D().hadirBulan ? Promise.resolve({ hadirGuru: D().hadirGuru || [], hadirSiswa: D().hadirSiswa || [] }) : A.ambilRekap(ym, ym);
+    el.innerHTML = `<div class="card card-pad mb-16"><div class="row-gap" style="flex-wrap:wrap"><div class="row-gap" style="gap:6px"><button class="btn btn-light btn-icon" data-geser="-1" aria-label="Hari sebelumnya">${icon('chevron-left')}</button>
+        <div style="width:170px"><input class="input" type="date" id="ph-tgl" value="${t}" max="${U.today()}"></div><button class="btn btn-light btn-icon" data-geser="1" aria-label="Hari berikutnya" ${t >= U.today() ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
+        ${t !== U.today() ? `<button class="btn btn-soft btn-sm" id="ph-kini">${icon('calendar-check')} Hari ini</button>` : ''}<span class="spacer"></span><b>${esc(U.tglHari(t))}</b></div></div><div id="ph-isi"><div class="sk" style="height:220px"></div></div>`;
+    const geser = (n) => { let x = U.addDays(t, n); let g = 0; while (!R.hariLes(x) && g++ < 10 && x < U.today()) x = U.addDays(x, n); ui.hTgl = x > U.today() ? U.today() : x; perHari(el, ui); };
+    $$('[data-geser]', el).forEach((b) => b.onclick = () => geser(+b.dataset.geser));
+    $('#ph-tgl', el).addEventListener('change', (e) => { if (e.target.value) { ui.hTgl = e.target.value; perHari(el, ui); } });
+    const kini = $('#ph-kini', el); if (kini) kini.onclick = () => { ui.hTgl = U.today(); perHari(el, ui); };
+    sumber.then((data) => {
+      const box = $('#ph-isi', el); if (!box) return;
+      const libur = R.libur(t);
+      if (!R.hariLes(t)) { box.innerHTML = `<div class="card">${A.kosong('calendar-x', 'Bukan hari les', libur ? esc(libur.keterangan) : 'Sabtu & Minggu tidak ada les.')}</div>`; return; }
+      const siswa = data.hadirSiswa.filter((h) => h[0] === t);
+      const per = {};
+      siswa.forEach((h) => { (per[h[2]] = per[h[2]] || []).push(h); });
+      const jam = {}; data.hadirGuru.filter((g) => g.tanggal === t).forEach((g) => { jam[g.guruId] = g.jamIsi; if (!per[g.guruId]) per[g.guruId] = []; });
+      const guruAktifHari = (D().guru || []).filter((g) => (!g.tglMasuk || g.tglMasuk <= t) && (!g.tglKeluar || g.tglKeluar > t));
+      guruAktifHari.forEach((g) => { if (!per[g.id]) per[g.id] = null; });
+      const ids = Object.keys(per).sort((a, b) => ((per[b] || []).length - (per[a] || []).length) || namaGuru(a).localeCompare(namaGuru(b)));
+      const mengajar = ids.filter((id) => per[id] && per[id].length);
+      const maks = Math.max(1, ...mengajar.map((id) => per[id].length));
+      box.innerHTML = `<div class="stats four mb-16">
+          <div class="card stat"><div class="top"><span class="lbl">Siswa hadir</span><span class="icon-dot sm ala">${icon('graduation-cap')}</span></div><div class="val">${siswa.length}</div><div class="sub">dari ${R.siswaTerdaftar().filter((s) => R.status(s.id) === 'aktif').length} siswa aktif</div></div>
+          <div class="card stat"><div class="top"><span class="lbl">Guru mengajar</span><span class="icon-dot sm">${icon('users')}</span></div><div class="val">${mengajar.length}</div><div class="sub">dari ${guruAktifHari.length} guru aktif</div></div>
+          <div class="card stat"><div class="top"><span class="lbl">Rata-rata</span><span class="icon-dot sm acc">${icon('chart-column')}</span></div><div class="val">${mengajar.length ? (siswa.length / mengajar.length).toFixed(1).replace('.', ',') : 0}</div><div class="sub">siswa per guru</div></div>
+          <div class="card stat"><div class="top"><span class="lbl">Guru &gt; ${ambang} siswa</span><span class="icon-dot sm sun">${icon('star')}</span></div><div class="val">${mengajar.filter((id) => per[id].length > ambang).length}</div><div class="sub">pada hari ini</div></div></div>
+        <div class="ph-grid">${ids.map((id) => {
+          const l = per[id] || []; const n = l.length;
+          const nama = l.map((h) => { const s = R.idx().siswa[h[1]]; return s ? s.nama : '(siswa dihapus)'; }).sort((a, b) => a.localeCompare(b));
+          return `<div class="card card-pad ph-card ${n ? '' : 'kosong'}"><div class="row-gap">${U.avatar(namaGuru(id), id)}<div style="flex:1;min-width:0"><b class="ellipsis" style="display:block">${esc(namaGuru(id))}</b><div class="tiny muted">${n ? (jam[id] ? 'Absen diisi ' + esc(jam[id]) : 'Tercatat') : 'Belum / tidak mengajar'}</div></div>
+            <div class="ph-n ${n > ambang ? 'banyak' : ''}"><b>${n}</b><small>siswa</small></div></div>
+            <div class="bar mt-12 ${n > ambang ? 'warn' : ''}"><i style="width:${n / maks * 100}%"></i></div>
+            ${n ? `<details class="mt-12"><summary class="small strong" style="cursor:pointer">Lihat ${n} siswa</summary><div class="ph-list mt-8">${nama.map((x) => `<span class="chip chip-sm">${esc(x)}</span>`).join('')}</div></details>` : ''}</div>`;
+        }).join('') || A.kosong('users', 'Belum ada guru', '')}</div>`;
+    }).catch((e) => { const box = $('#ph-isi', el); if (box) box.innerHTML = `<div class="card">${A.kosong('cloud-off', 'Gagal memuat', esc(e.message))}</div>`; });
+  }
+
   // Koreksi kehadiran oleh Admin (tanggal mana pun)
   function koreksi(el, ui) {
     const guru = (D().guru || []).filter((g) => guruAktif(g) || g.id === ui.kGuru);
@@ -373,7 +413,9 @@
     render(view, params, qs) {
       const d = D();
       const ui = A.ui.spp = A.ui.spp || { q: '', prog: '', st: '', tunggak: false, sel: new Set(), wa: true, qsKey: '', hal: 1 };
-      const ym = /^\d{4}-\d{2}$/.test(params[0] || '') ? params[0] : U.ymNow();
+      const rg = /^(\d{4}-\d{2})_(\d{4}-\d{2})$/.exec(params[0] || '');
+      if (rg && rg[1] !== rg[2]) return sppRentang(view, rg[1] < rg[2] ? rg[1] : rg[2], rg[1] < rg[2] ? rg[2] : rg[1], qs);
+      const ym = /^\d{4}-\d{2}$/.test(params[0] || '') ? params[0] : rg ? rg[1] : U.ymNow();
       if (qs.toString() && qs.toString() !== ui.qsKey) { ui.qsKey = qs.toString(); if (qs.get('f') === 'tunggak') { ui.tunggak = true; ui.st = 'belum'; } }
       const tarif = R.tarif(ym);
       const pr = R.peringatan(); const dua = new Set(pr.tunggakan.map((x) => x.s.id));
@@ -393,7 +435,7 @@
       const rk = A.ringkasSpp(ym);
       const persen = rk.wajib ? Math.round(rk.lunasN / rk.wajib * 1000) / 10 : 0;
       view.innerHTML = `<div class="page-head"><div><h1>SPP & Kuitansi</h1><p>Tandai pembayaran, terbitkan kuitansi resmi, dan pantau tunggakan.</p></div>
-        <div class="actions"><div class="row-gap" style="gap:4px"><a class="btn btn-light btn-icon btn-sm" href="#/spp/${U.addMonths(ym, -1)}" aria-label="Bulan sebelumnya">${icon('chevron-left')}</a><b style="min-width:130px;text-align:center">${U.bulan(ym)}</b><a class="btn btn-light btn-icon btn-sm" href="#/spp/${U.addMonths(ym, 1)}" aria-label="Bulan berikutnya">${icon('chevron-right')}</a></div>
+        <div class="actions"><div class="row-gap" style="gap:4px"><a class="btn btn-light btn-icon btn-sm" href="#/spp/${U.addMonths(ym, -1)}" aria-label="Bulan sebelumnya">${icon('chevron-left')}</a>${U.tombolPeriode('s-per', ym, ym)}<a class="btn btn-light btn-icon btn-sm" href="#/spp/${U.addMonths(ym, 1)}" aria-label="Bulan berikutnya">${icon('chevron-right')}</a></div>
           <button class="btn btn-light btn-sm" id="s-tarif">${icon('settings')} Atur Tarif</button><button class="btn btn-light btn-sm" data-ex="xlsx" style="color:#15803D">${icon('file-spreadsheet')} Excel</button><button class="btn btn-light btn-sm" data-ex="pdf" style="color:var(--bad-700)">${icon('file-text')} PDF</button></div></div>
         ${tarif ? '' : `<div class="note-box warn mb-16">${icon('triangle-alert')}<span><b>Tarif SPP untuk ${U.bulan(ym)} belum diatur.</b> Tagihan dan peringatan tunggakan baru dihitung setelah tarif ditetapkan. <a href="#" id="s-tarif2" style="font-weight:700">Atur tarif sekarang</a></span></div>`}
         <div class="stats four mb-16"><div class="card stat"><div class="top"><span class="lbl">Tarif aktif</span><span class="icon-dot sm">${icon('wallet')}</span></div><div class="val sm">${U.rp(tarif)}<span class="small muted">/bln</span></div><div class="sub">Jatuh tempo tgl ${+d.settings.spp_jatuh_tempo || 10}</div></div>
@@ -415,13 +457,14 @@
               : `<button class="btn btn-accent btn-sm" data-bayar="${s.id}">${icon('wallet')} Tandai Lunas</button>${tg.belum.length && s.wa ? `<button class="btn btn-wa btn-icon btn-sm" data-ingat="${s.id}" title="Kirim pengingat WA">${icon('message-circle')}</button>` : ''}`}</div></td></tr>`; }).join('')}
           </tbody></table></div>${A.pager(rows.length, ui.hal, PER)}${rows.some((r) => !r.l) ? `<div style="padding:0 16px 14px"><button class="btn btn-ghost btn-sm" id="s-pilih-semua">${icon('circle-check')} Pilih semua yang belum bayar (${rows.filter((r) => !r.l).length})</button></div>` : ''}` : A.kosong('receipt', semua.length ? 'Tidak ada data yang cocok' : 'Belum ada tagihan bulan ini', semua.length ? 'Ubah filter.' : 'Tagihan muncul untuk siswa aktif setelah tarif SPP diatur.')}</div>
         ${ui.sel.size ? `<div class="bulk"><span class="n">${icon('circle-check')} ${ui.sel.size} siswa dipilih</span><div class="acts">
-          <label class="check" style="color:#fff"><input type="checkbox" id="b-wa" ${ui.wa ? 'checked' : ''}><span class="box">${icon('check')}</span><span class="small">Kirim link kuitansi via WA</span></label></div>
+          <label class="check" style="color:#fff"><input type="checkbox" id="b-wa" ${ui.wa && A.tplAktif('tpl_wa_kuitansi') ? 'checked' : ''} ${A.tplAktif('tpl_wa_kuitansi') ? '' : 'disabled'}><span class="box">${icon('check')}</span><span class="small">Kirim link kuitansi via WA</span></label></div>
           <button class="btn hl" id="b-lunas">${icon('circle-check')} Tandai Lunas ${U.bulan(ym)}</button><button class="btn x btn-icon" data-clear aria-label="Batal">${icon('x')}</button></div>` : ''}`;
       const ul = () => A.refresh(true);
       $('#s-q').oninput = U.debounce((e) => { ui.q = e.target.value; ui.hal = 1; ul(); const i = $('#s-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
       $('#s-prog').onchange = (e) => { ui.prog = e.target.value; ul(); };
       $('#s-st').onchange = (e) => { ui.st = e.target.value; ul(); };
       $('#s-tg').onclick = () => { ui.tunggak = !ui.tunggak; ul(); };
+      $('#s-per').onclick = () => pilihPeriodeSpp(ym, ym);
       $('#s-tarif').onclick = aturTarif; const t2 = $('#s-tarif2'); if (t2) t2.onclick = (e) => { e.preventDefault(); aturTarif(); };
       $$('[data-sel]').forEach((c) => c.onchange = () => { c.checked ? ui.sel.add(c.dataset.sel) : ui.sel.delete(c.dataset.sel); ul(); });
       const all = $('[data-all]'); if (all) all.onchange = () => { halRows.filter((r) => !r.l).forEach((r) => all.checked ? ui.sel.add(r.s.id) : ui.sel.delete(r.s.id)); ul(); };
@@ -436,12 +479,70 @@
       const bw = $('#b-wa'); if (bw) bw.onchange = () => { ui.wa = bw.checked; };
       const bl = $('#b-lunas'); if (bl) bl.onclick = () => {
         const ids = Array.from(ui.sel);
-        ids.forEach((id) => catatBayar(R.idx().siswa[id], [ym], { metode: 'Tunai', tglBayar: U.today(), kirimWA: ui.wa }));
+        ids.forEach((id) => catatBayar(R.idx().siswa[id], [ym], { metode: 'Tunai', tglBayar: U.today(), kirimWA: ui.wa && A.tplAktif('tpl_wa_kuitansi') }));
         U.toast(`${ids.length} siswa ditandai lunas ${U.bulan(ym)}${ui.wa ? ' · link kuitansi dikirim via WA' : ''}`);
         ui.sel.clear(); A.render();
       };
     }
   });
+  async function pilihPeriodeSpp(dari, sampai) {
+    const r = await U.pilihPeriode({ dari, sampai, min: '2020-01', max: U.ymNow().slice(0, 4) + '-12' > U.addMonths(U.ymNow(), 6) ? U.ymNow().slice(0, 4) + '-12' : U.addMonths(U.ymNow(), 6) });
+    if (!r) return;
+    try { if (await A.pastikanSpp(r.dari)) U.toast('Data SPP lama dimuat', 'info'); } catch (e) { U.toast(e.message, 'bad'); }
+    A.go('/spp/' + (r.dari === r.sampai ? r.dari : r.dari + '_' + r.sampai));
+  }
+  // Rekap SPP beberapa bulan / satu tahun
+  function sppRentang(view, dari, sampai, qs) {
+    const ui = A.ui.sppR = A.ui.sppR || { q: '', prog: '', st: '', hal: 1 };
+    if (ui.kunci !== dari + sampai) { ui.kunci = dari + sampai; ui.hal = 1; }
+    const bulan = []; for (let b = dari; b <= sampai; b = U.addMonths(b, 1)) bulan.push(b);
+    const kini = U.ymNow();
+    const semua = R.siswaTerdaftar().map((s) => {
+      const sel = bulan.map((b) => { const l = R.lunas(s.id, b); return { b, l, tagih: !l && R.ditagih(s, b) && b <= kini }; });
+      const dibayar = sel.filter((x) => x.l).reduce((t, x) => t + (+x.l.nominal || 0), 0);
+      const belumB = sel.filter((x) => x.tagih);
+      return { s, p: R.prog(s.id), sel, dibayar, belumB, belum: belumB.reduce((t, x) => t + R.tarif(x.b), 0), nLunas: sel.filter((x) => x.l).length };
+    }).filter((x) => x.nLunas || x.belumB.length);
+    const q = ui.q.toLowerCase();
+    const rows = semua.filter((x) => (!ui.prog || (x.p && x.p.program === ui.prog)) && (!ui.st || (ui.st === 'lunas' ? !x.belumB.length : x.belumB.length)) && (!q || [x.s.nama, x.s.panggilan, x.s.kode, x.s.ortu].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => b.belumB.length - a.belumB.length || a.s.nama.localeCompare(b.s.nama));
+    const tot = semua.reduce((t, x) => ({ dibayar: t.dibayar + x.dibayar, belum: t.belum + x.belum, nL: t.nL + x.nLunas, nB: t.nB + x.belumB.length }), { dibayar: 0, belum: 0, nL: 0, nB: 0 });
+    const persen = tot.dibayar + tot.belum ? Math.round(tot.dibayar / (tot.dibayar + tot.belum) * 1000) / 10 : 0;
+    const PER = 25, nHal = Math.max(1, Math.ceil(rows.length / PER)); if (ui.hal > nHal) ui.hal = nHal;
+    const hal = rows.slice((ui.hal - 1) * PER, ui.hal * PER);
+    view.innerHTML = `<div class="page-head"><div><h1>SPP & Kuitansi</h1><p>Rekap pembayaran ${esc(U.labelPeriode(dari, sampai))} (${bulan.length} bulan).</p></div>
+      <div class="actions">${U.tombolPeriode('s-per', dari, sampai)}<a class="btn btn-light btn-sm" href="#/spp/${kini}">${icon('calendar-check')} Bulan ini</a><button class="btn btn-light btn-sm" data-ex="xlsx" style="color:#15803D">${icon('file-spreadsheet')} Excel</button><button class="btn btn-light btn-sm" data-ex="pdf" style="color:var(--bad-700)">${icon('file-text')} PDF</button></div></div>
+      <div class="stats four mb-16"><div class="card stat"><div class="top"><span class="lbl">Total tagihan</span><span class="icon-dot sm">${icon('wallet')}</span></div><div class="val sm num">${U.rp(tot.dibayar + tot.belum)}</div><div class="sub">${tot.nL + tot.nB} tagihan siswa-bulan</div></div>
+        <div class="card stat"><div class="top"><span class="lbl">Sudah dibayar</span><span class="icon-dot sm ok">${icon('circle-check')}</span></div><div class="val sm num">${U.rp(tot.dibayar)}</div><div class="sub">${tot.nL} pembayaran</div></div>
+        <div class="card stat"><div class="top"><span class="lbl">Belum dibayar</span><span class="icon-dot sm bad">${icon('circle-alert')}</span></div><div class="val sm num">${U.rp(tot.belum)}</div><div class="sub">${tot.nB} bulan tertunggak</div></div>
+        <div class="card stat"><div class="top"><span class="lbl">Terkumpul</span><span class="icon-dot sm ala">${icon('trending-up')}</span></div><div class="val">${String(persen).replace('.', ',')}%</div><div class="bar ok"><i style="width:${persen}%"></i></div></div></div>
+      <div class="card mb-12"><div class="filters"><div class="input-icon search">${icon('search')}<input class="input" id="r-q" placeholder="Cari siswa, kode, orang tua…" value="${esc(ui.q)}"></div>
+        <select class="input" id="r-prog"><option value="">Semua program</option><option value="ahe" ${ui.prog === 'ahe' ? 'selected' : ''}>Baca (Ahe)</option><option value="ala" ${ui.prog === 'ala' ? 'selected' : ''}>Berhitung (Ala)</option></select>
+        <select class="input" id="r-st"><option value="">Semua status</option><option value="lunas" ${ui.st === 'lunas' ? 'selected' : ''}>Lunas semua</option><option value="belum" ${ui.st === 'belum' ? 'selected' : ''}>Ada yang belum</option></select>
+        <span class="spacer"></span><div class="legend"><span><i style="background:var(--ok)"></i>Lunas</span><span><i style="background:var(--bad)"></i>Belum</span><span><i style="background:var(--line-2)"></i>Tidak ditagih</span></div></div></div>
+      <div class="card">${hal.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th>Siswa</th><th>Program</th><th>Status per bulan</th><th class="t-right">Dibayar</th><th class="t-right">Belum</th><th class="t-right">Aksi</th></tr></thead><tbody>
+        ${hal.map((x) => `<tr class="${x.belumB.length >= 2 ? 'row-bad' : ''}"><td class="t-main"><div class="person">${U.avatar(x.s.nama, x.s.id)}<div><a class="t-name" href="#/siswa/${x.s.id}">${esc(x.s.nama)}</a><div class="t-sub">${esc(x.s.kode || '')}</div></div></div></td>
+          <td data-l="Program">${A.chipProg(x.p, true)}</td>
+          <td data-l="Per bulan"><div class="mstrip">${x.sel.map((m) => `<span class="mchip ${m.l ? 'ok' : m.tagih ? 'no' : ''}" title="${esc(U.bulan(m.b))}: ${m.l ? 'lunas ' + esc(U.tgl(m.l.tglBayar)) : m.tagih ? 'belum bayar' : 'tidak ditagih'}">${U.BLN[+m.b.slice(5, 7) - 1]}${bulan.length > 12 || m.b.slice(0, 4) !== sampai.slice(0, 4) ? ' ' + m.b.slice(2, 4) : ''}</span>`).join('')}</div></td>
+          <td data-l="Dibayar" class="t-right num">${U.rp(x.dibayar)}</td><td data-l="Belum" class="t-right num">${x.belum ? `<b style="color:var(--bad-700)">${U.rp(x.belum)}</b>` : '—'}</td>
+          <td class="t-actions t-right">${x.belumB.length ? `<button class="btn btn-accent btn-sm" data-bayar="${x.s.id}" data-bln="${x.belumB.map((m) => m.b).join(',')}">${icon('wallet')} Bayar</button>` : `<span class="chip chip-ok">${icon('check')} Lunas</span>`}</td></tr>`).join('')}
+      </tbody></table></div>${A.pager(rows.length, ui.hal, PER)}` : A.kosong('receipt', 'Tidak ada data', 'Ubah filter atau periode.')}</div>`;
+    const ul = () => A.refresh(true);
+    $('#s-per').onclick = () => pilihPeriodeSpp(dari, sampai);
+    $('#r-q').oninput = U.debounce((e) => { ui.q = e.target.value; ui.hal = 1; ul(); const i = $('#r-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
+    $('#r-prog').onchange = (e) => { ui.prog = e.target.value; ui.hal = 1; ul(); };
+    $('#r-st').onchange = (e) => { ui.st = e.target.value; ui.hal = 1; ul(); };
+    $$('[data-pg]').forEach((b) => b.onclick = () => { ui.hal = +b.dataset.pg; A.render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    $$('[data-bayar]').forEach((b) => b.onclick = () => A.bayarSiswa(R.idx().siswa[b.dataset.bayar], b.dataset.bln.split(',')));
+    $$('[data-ex]').forEach((b) => b.onclick = async () => {
+      const head = ['No', 'Nama Siswa', 'Kode', 'Program'].concat(bulan.map((m) => U.BLN[+m.slice(5, 7) - 1] + ' ' + m.slice(2, 4))).concat(['Dibayar', 'Belum']);
+      const body = rows.map((x, i) => [i + 1, x.s.nama, x.s.kode, x.p ? (x.p.program === 'ala' ? 'Ala' : 'Ahe') : '-'].concat(x.sel.map((m) => m.l ? 'Lunas' : m.tagih ? 'Belum' : '-')).concat([x.dibayar, x.belum]));
+      body.push(['', 'TOTAL', '', ''].concat(bulan.map(() => '')).concat([tot.dibayar, tot.belum]));
+      const lembar = [{ nama: 'Rekap SPP', judul: 'Rekap SPP — ' + U.labelPeriode(dari, sampai), head, body }];
+      const nf = 'Rekap-SPP_' + dari + '_sd_' + sampai;
+      try { if (b.dataset.ex === 'xlsx') await A.unduhExcel(lembar, nf); else await A.unduhPdf(lembar, nf); } catch (e) { U.toast(e.message, 'bad'); }
+    });
+  }
   // Catat pembayaran: optimistis + satu kuitansi per siswa
   function catatBayar(s, bulan, o) {
     const items = bulan.filter((b) => !R.lunas(s.id, b)).map((b) => ({ bulan: b, nominal: R.tarif(b) }));
@@ -471,10 +572,11 @@
     const now = U.ymNow();
     const opsi = new Set(tg.belum);
     for (let i = -2; i <= 2; i++) { const b = U.addMonths(now, i); if (R.ditagih(s, b) || (i >= 0 && R.tarif(b) > 0)) opsi.add(b); }
-    if (ymAwal) opsi.add(ymAwal);
+    const awal = Array.isArray(ymAwal) ? ymAwal : ymAwal ? [ymAwal] : null;
+    if (awal) awal.forEach((b) => opsi.add(b));
     const list = Array.from(opsi).filter((b) => R.tarif(b) > 0).sort();
     if (!list.length) { U.toast('Tarif SPP belum diatur', 'warn'); return aturTarif(); }
-    const pilihAwal = new Set(ymAwal ? [ymAwal] : tg.belum.length ? tg.belum : [now]);
+    const pilihAwal = new Set(awal || (tg.belum.length ? tg.belum : [now]));
     const m = U.modal({
       title: 'Bayar SPP — ' + s.nama, icon: 'receipt', sub: esc(s.kode) + (R.prog(s.id) ? ' · ' + esc(R.LABEL[R.prog(s.id).program]) + ' Level ' + esc(R.prog(s.id).level) : ''),
       body: `<div class="tiny strong muted mb-12" style="letter-spacing:.06em">PILIH BULAN YANG DIBAYAR</div><div class="stack-sm" id="by-list">${list.map((b) => { const l = R.lunas(s.id, b); const tunggak = tg.belum.includes(b); return `<label class="card card-pad row-gap" style="padding:12px 14px;cursor:${l ? 'default' : 'pointer'};${tunggak ? 'background:#FFF6F6;border-color:#FBD5D5' : ''}">
@@ -482,7 +584,7 @@
           <div style="flex:1"><b>${U.bulan(b)}</b><div class="tiny ${l ? '' : tunggak ? '' : 'muted'}" style="${tunggak && !l ? 'color:var(--bad-700);font-weight:700' : ''}">${l ? 'Sudah lunas ' + esc(U.tgl(l.tglBayar)) : tunggak ? 'TUNGGAKAN' : b > now ? 'Bayar di muka' : b === now ? 'Bulan berjalan' : ''}</div></div><b class="num">${U.rp(R.tarif(b))}</b></label>`; }).join('')}</div>
         <div class="card soft card-pad mt-16 row-gap"><div style="flex:1"><div class="small muted">Total pembayaran</div><div class="tiny muted" id="by-n"></div></div><div style="font-family:var(--f-head);font-weight:900;font-size:26px;color:var(--p-700)" id="by-total" class="num"></div></div>
         <div class="grid-2 mt-16"><div class="field"><label>Metode</label><select class="input" id="by-metode"><option>Tunai</option><option>Transfer Bank</option><option>QRIS / E-wallet</option></select></div><div class="field"><label>Tanggal bayar</label><input class="input" type="date" id="by-tgl" value="${U.today()}" max="${U.today()}"></div></div>
-        <label class="check mt-16"><input type="checkbox" id="by-wa" ${s.wa ? 'checked' : 'disabled'}><span class="box">${icon('check')}</span><span class="small">Buat 1 kuitansi & kirim link via WhatsApp ke ${s.wa ? esc(U.tampilWa(s.wa)) : '(nomor WA belum ada)'}</span></label>`,
+        <label class="check mt-16"><input type="checkbox" id="by-wa" ${s.wa && A.tplAktif('tpl_wa_kuitansi') ? 'checked' : 'disabled'}><span class="box">${icon('check')}</span><span class="small">Buat 1 kuitansi & kirim link via WhatsApp ke ${s.wa ? esc(U.tampilWa(s.wa)) : '(nomor WA belum ada)'}${A.tplAktif('tpl_wa_kuitansi') ? '' : ' <span class="muted">— pesan kuitansi dinonaktifkan di Pengaturan → WhatsApp</span>'}</span></label>`,
       foot: `<button class="btn btn-light" data-n>Batal</button><button class="btn btn-primary" data-ok>${icon('receipt')} Simpan & Terbitkan Kuitansi</button>`
     });
     const hitung = () => {

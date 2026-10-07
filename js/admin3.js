@@ -114,15 +114,17 @@
   // ======================================================================
   // KELOLA LANDING PAGE (simpan otomatis + pratinjau langsung)
   // ======================================================================
-  const NAMA_SEKSI = { hero: 'Banner Utama', metode: 'Metode Pembelajaran', program: 'Program & Level', pengumuman: 'Pengumuman Libur', galeri: 'Galeri Foto Kegiatan', video: 'Video Kegiatan', lokasi: 'Lokasi & Peta', kontak: 'Footer Kontak' };
-  const DESK_SEKSI = { hero: 'Foto banner, judul, slogan, poin unggulan', metode: 'Kartu keunggulan metode belajar', program: 'Penjelasan program Baca & Berhitung', pengumuman: 'Otomatis dari menu Hari Libur', galeri: 'Foto dari HP atau link', video: 'Link YouTube / Facebook', lokasi: 'Alamat, jam les, peta Google Maps', kontak: 'Tombol WhatsApp & media sosial' };
+  const NAMA_SEKSI = { hero: 'Banner Utama', statistik: 'Jumlah Murid', metode: 'Metode Pembelajaran', program: 'Program & Level', pengumuman: 'Pengumuman Libur', galeri: 'Galeri Foto Kegiatan', video: 'Video Kegiatan', lokasi: 'Lokasi & Peta', kontak: 'Footer Kontak' };
+  const DESK_SEKSI = { hero: 'Foto banner, judul, slogan, poin unggulan', statistik: 'Angka murid Baca & Berhitung (otomatis)', metode: 'Kartu keunggulan metode belajar', program: 'Penjelasan program Baca & Berhitung', pengumuman: 'Otomatis dari menu Hari Libur', galeri: 'Foto dari HP atau link', video: 'Link YouTube / Facebook', lokasi: 'Alamat, jam les, peta Google Maps', kontak: 'Tombol WhatsApp & media sosial' };
   const IKON_METODE = ['book-open', 'calculator', 'heart', 'smile', 'star', 'puzzle', 'users', 'award', 'school', 'sparkles'];
   const isiSeksi = (s) => { try { return typeof s.isi === 'string' ? JSON.parse(s.isi || '{}') : (s.isi || {}); } catch (e) { return {}; } };
   let frameSiap = false;
   const kirimPratinjau = U.debounce(() => {
     const fr = $('#lp-frame'); if (!fr || !frameSiap) return;
     const d = D(), t = U.today();
-    fr.contentWindow.postMessage({ type: 'ahe-preview', data: { settings: d.settings, sections: d.landing, galeri: (d.galeri || []).filter((g) => g.tampil !== 'tidak'), libur: (d.libur || []).filter((l) => l.tampilLanding === 'ya' && (l.tglMasuk || l.tglSelesai) >= t) } }, location.origin);
+    const sp = { ahe: 0, ala: 0, alumni: 0, guru: (d.guru || []).filter((g) => !g.tglKeluar || g.tglKeluar > t).length }; const alumni = new Set();
+    R.siswaTerdaftar().forEach((s) => R.programs(s.id).forEach((p) => { if (p.status === 'aktif') sp[p.program === 'ala' ? 'ala' : 'ahe']++; if (p.status === 'lulus') alumni.add(s.id); })); sp.alumni = alumni.size;
+    fr.contentWindow.postMessage({ type: 'ahe-preview', data: { statistik: sp, settings: d.settings, sections: d.landing, galeri: (d.galeri || []).filter((g) => g.tampil !== 'tidak'), libur: (d.libur || []).filter((l) => l.tampilLanding === 'ya' && (l.tglMasuk || l.tglSelesai) >= t) } }, location.origin);
   }, 250);
   window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.type === 'ahe-preview-ready') { frameSiap = true; kirimPratinjau(); } });
   const simpanSeksi = U.debounce(() => {
@@ -138,6 +140,8 @@
     render(view) {
       const d = D();
       const ui = A.ui.landing = A.ui.landing || { buka: 'hero', mode: 'desktop' };
+      // Bagian baru yang belum ada di data lama ditambahkan otomatis
+      if (d.landing && !d.landing.some((s) => s.id === 'statistik')) d.landing.push({ id: 'statistik', urutan: '1.5', tampil: 'ya', judul: 'Bersama Kami Anak Makin Percaya Diri', subjudul: 'Jumlah murid yang sedang belajar membaca dan berhitung bersama kami saat ini.', isi: '{}' });
       const seksi = (d.landing || []).slice().sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0));
       view.innerHTML = `<div class="page-head"><div><h1>Kelola Landing Page</h1><p>Atur urutan, tampil/sembunyi, teks, foto, dan video halaman publik. Perubahan tersimpan otomatis.</p></div>
         <div class="actions"><span class="small muted" id="lp-status">${icon('cloud', 'ic-sm')} Simpan otomatis aktif</span><a class="btn btn-light" href="index.html" target="_blank" rel="noopener">${icon('external-link')} Lihat Halaman Publik</a></div></div>
@@ -211,6 +215,9 @@
     } else if (s.id === 'program') {
       el.innerHTML = `<div class="form-stack">${umum}<div class="field"><label>Penjelasan Les Baca (Ahe)</label><textarea class="input" data-x="ahe" rows="3">${esc(x.ahe || '')}</textarea></div><div class="field"><label>Penjelasan Les Berhitung (Ala)</label><textarea class="input" data-x="ala" rows="3">${esc(x.ala || '')}</textarea></div>
         <p class="help">${icon('info', 'ic-sm')} Daftar level (Baca 1–7; Berhitung 1–6 & 7–16) ditampilkan otomatis.</p></div>`;
+      bind();
+    } else if (s.id === 'statistik') {
+      el.innerHTML = `<div class="form-stack">${umum}<div class="note-box">${icon('info')}<span>Angka <b>murid Les Baca</b>, <b>murid Les Berhitung</b>, <b>alumni</b>, dan <b>guru</b> dihitung otomatis dari data siswa aktif — selalu terbaru tanpa perlu diubah manual.</span></div></div>`;
       bind();
     } else if (s.id === 'pengumuman') {
       const l = (D().libur || []).filter((z) => z.tampilLanding === 'ya' && (z.tglMasuk || z.tglSelesai) >= U.today());
@@ -346,7 +353,7 @@
         ${fld('nama_aplikasi', 'Nama aplikasi', s.nama_aplikasi, 'maxlength="60"', 'Tampil di header, login, dan judul halaman')}
         ${fld('nama_lembaga', 'Nama lembaga resmi', s.nama_lembaga, 'maxlength="120"', 'Dipakai di kuitansi, rekap PDF, dan pesan WA')}
         ${fld('slogan', 'Slogan singkat', s.slogan)}
-        <div class="grid-2">${fld('nama_unit', 'Nama unit', s.nama_unit, 'maxlength="100"', 'Menjadi “Unit Pembelajaran” di piagam Ahe')}${fld('no_unit', 'No. Unit', s.no_unit, 'maxlength="30"', '<span id="id-nomor">Dipakai di nomor piagam</span>')}</div>
+        <div class="grid-2">${fld('nama_unit', 'Nama unit', s.nama_unit, 'maxlength="100"', 'Menjadi “Unit Pembelajaran” di piagam Ahe')}${fld('no_unit', 'No. Unit (4 digit)', s.no_unit, 'maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="Contoh: 3924"', '<span id="id-nomor">Dipakai di nomor piagam</span>')}</div>
         ${fld('kepala_unit', 'Kepala Unit', s.kepala_unit || s.kuitansi_penerima, 'maxlength="100"', 'Penanda tangan kuitansi & nama Kepala Unit di piagam')}
         <div class="grid-2">${fld('kecamatan', 'Kecamatan', s.kecamatan, 'maxlength="80"')}${fld('desa', 'Desa / Kelurahan', s.desa, 'maxlength="80"', 'Menjadi “Desa / Kelurahan” di piagam Ala')}</div>
         <div class="field"><label>Alamat</label><textarea class="input" name="alamat" rows="2" maxlength="200" placeholder="Contoh: Jl. Pendidikan No. 45, RT 05">${esc(s.alamat || '')}</textarea><span class="help">Isi nama jalan, RT, dan nomor. Desa & kecamatan diambil dari kolom di atas.</span></div>
@@ -366,6 +373,7 @@
       e.preventDefault(); const f = e.target;
       const v = {}; ['nama_aplikasi', 'nama_lembaga', 'nama_unit', 'no_unit', 'kepala_unit', 'kecamatan', 'desa', 'slogan', 'alamat'].forEach((k) => { v[k] = f[k].value.trim(); });
       v.kuitansi_penerima = v.kepala_unit;
+      if (v.no_unit && !/^\d{4}$/.test(v.no_unit)) { f.no_unit.focus(); return U.toast('No. Unit harus 4 digit angka, contoh 3924', 'warn'); }
       if (!v.nama_aplikasi) return U.toast('Nama aplikasi wajib diisi', 'warn');
       simpanSet(v, 'Identitas'); A.render(); document.querySelector('.brand .t1') && (document.querySelector('.brand .t1').textContent = v.nama_aplikasi);
     };
@@ -393,7 +401,7 @@
     };
     const td = $('#ttd-del'); if (td) td.onclick = async () => { if (await U.confirm({ title: 'Hapus tanda tangan?', text: 'Kuitansi akan tampil tanpa gambar tanda tangan.', ok: 'Hapus', danger: true })) { simpanSet({ ttd_data: '' }, 'Tanda tangan dihapus'); A.refresh(true); } };
     const nomorContoh = () => { const el = $('#id-nomor'); if (!el) return; const nu = $('#fid').no_unit.value.trim(); el.innerHTML = 'Contoh nomor piagam: <b class="num">' + esc(Piagam.formatNomor(1, 'ahe', U.today(), nu)) + '</b>'; };
-    $('#fid').no_unit.addEventListener('input', nomorContoh); nomorContoh();
+    $('#fid').no_unit.addEventListener('input', (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); if (v !== e.target.value) e.target.value = v; nomorContoh(); }); nomorContoh();
   }
   function setDaftar(el) {
     const s = D().settings;
@@ -434,6 +442,7 @@
   }
   function setWa(el) {
     const d = D(), s = d.settings;
+    const mati = new Set(String(s.tpl_nonaktif || '').split(',').filter(Boolean));
     const ui = A.ui.wa = A.ui.wa || { tpl: TPL[0][0] };
     const log = (d.logWA || []).slice().reverse();
     const kuota = d.waBulanIni || 0;
@@ -451,12 +460,17 @@
           <td data-l="Status">${l.status === 'terkirim' ? `<span class="chip chip-ok chip-sm">${icon('check')} Terkirim</span>` : l.status === 'dilewati' ? `<span class="chip chip-sm" title="${esc(l.respon)}">Dilewati</span>` : `<span class="chip chip-bad chip-sm" title="${esc(l.respon)}">${icon('x')} Gagal</span><div class="tiny muted">${esc(l.respon)}</div>`}</td>
           <td class="t-actions">${l.status !== 'terkirim' && l.tujuan ? `<button class="btn btn-light btn-xs" data-ulang="${l.id}">${icon('refresh-cw')} Kirim ulang</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : A.kosong('message-circle', 'Belum ada pengiriman', '')}</div></div>
       <div class="card card-pad" style="align-self:start"><div class="row-gap mb-12"><span class="icon-dot">${icon('file-text')}</span><h3 style="flex:1">Template pesan otomatis</h3></div>
-        <div class="tabs mb-12" style="flex-wrap:wrap">${TPL.map(([k, l]) => `<button class="tab ${ui.tpl === k ? 'on' : ''}" data-tpl="${k}" style="min-height:34px;font-size:13px">${l}</button>`).join('')}</div>
-        <p class="small muted mb-12">${esc(TPL.find((x) => x[0] === ui.tpl)[2])}</p>
+        <div class="tabs mb-12" style="flex-wrap:wrap">${TPL.map(([k, l]) => `<button class="tab ${ui.tpl === k ? 'on' : ''} ${mati.has(k) ? 'tpl-mati' : ''}" data-tpl="${k}" style="min-height:34px;font-size:13px">${mati.has(k) ? icon('circle-pause', 'ic-sm') + ' ' : ''}${l}</button>`).join('')}</div>
+        <label class="switch tpl-sw mb-12"><input type="checkbox" id="tpl-aktif" ${mati.has(ui.tpl) ? '' : 'checked'}><span class="track"></span><span><b>${mati.has(ui.tpl) ? 'Pesan ini NONAKTIF' : 'Pesan ini aktif'}</b><br><span class="tiny muted">${esc(TPL.find((x) => x[0] === ui.tpl)[2])}. ${mati.has(ui.tpl) ? 'Tidak dikirim otomatis.' : 'Matikan bila tidak ingin dikirim otomatis.'}</span></span></label>
         <textarea class="input" id="tpl-isi" rows="7">${esc(s[ui.tpl] || '')}</textarea>
         <div class="tiny strong muted mt-12 mb-12">KLIK UNTUK MENYISIPKAN:</div><div class="tokens">${TOKEN_TPL.map((t) => `<button type="button" data-tok="${t}">${t}</button>`).join('')}</div>
         <div class="tiny strong muted mt-16 mb-12">PRATINJAU DI HP PENERIMA</div><div class="wa-phone"><div class="wa-bubble"><span id="tpl-prev"></span><div class="meta">${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} ✓✓ · sent via fonnte</div></div></div>
         <div class="row-gap mt-16"><button class="btn btn-light btn-sm" id="tpl-reset">${icon('rotate-ccw')} Kembali ke sebelumnya</button><span class="spacer"></span><button class="btn btn-primary" id="tpl-simpan">${icon('save')} Simpan template</button></div></div></div>`;
+    $('#tpl-aktif').onchange = (e) => {
+      const set2 = new Set(String(D().settings.tpl_nonaktif || '').split(',').filter(Boolean));
+      if (e.target.checked) set2.delete(ui.tpl); else set2.add(ui.tpl);
+      simpanSet({ tpl_nonaktif: Array.from(set2).join(',') }, e.target.checked ? 'Pesan otomatis diaktifkan' : 'Pesan otomatis dinonaktifkan'); A.render();
+    };
     const contoh = { lembaga: s.nama_lembaga || s.nama_aplikasi, nama: 'Aisyah Putri', panggilan: 'Ica', ortu: 'Hendra', program: 'Les Berhitung (Ala)', kode: 'REG-2026-0012', level: '1', wa: '6281234567890', bulan_tunggakan: 'September & Oktober 2026', total: 'Rp300.000', link_kuitansi: U.urlBaseFrontend() + '#/kuitansi/contoh', hari_absen: '11', terakhir_hadir: U.tglPanjang(U.addDays(U.today(), -16)), wa_admin: s.wa_admin ? '+' + s.wa_admin : '+62812xxxx' };
     const ta = $('#tpl-isi');
     const prev = () => { $('#tpl-prev').innerHTML = esc(ta.value.replace(/\{([a-z_]+)\}/g, (m, k) => contoh[k] !== undefined ? contoh[k] : m)).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/_([^_\n]+)_/g, '<i>$1</i>'); };

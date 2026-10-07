@@ -154,7 +154,8 @@
     tampilLogin();
   };
 
-  function tampilLogin() {
+  function tampilLogin(opsi) {
+    opsi = opsi || {};
     document.body.classList.remove('logged');
     const guruList = U.ls.get(LS_GURU, []) || [];
     const ui = A.ui._login = A.ui._login || { peran: 'guru', guruId: '', buka: false };
@@ -166,6 +167,8 @@
       appEl.innerHTML = `<div class="login-wrap"><span class="deco" style="font-size:140px;top:2%;left:4%">A</span><span class="deco" style="font-size:120px;bottom:6%;right:6%">3</span><span class="deco" style="font-size:90px;top:30%;right:10%">1</span>
         <div class="login-box"><div class="login-logo">${U.logoHtml(set, '<span style="font-family:var(--f-head);font-weight:900;font-size:44px">A</span>')}<span class="star">${icon('star', 'ic-sm ic-fill')}</span></div>
           <div class="login-title"><h1>${esc(set.nama_aplikasi || 'Ahe & Ala')}</h1><p class="muted">Manajemen Les Baca & Berhitung</p></div>
+          ${opsi.sesiLama ? `<div class="card card-pad sesi-lama mb-12"><div class="row-gap">${icon('circle-check')}<div style="flex:1"><b>Anda masih masuk</b><div class="small muted">sebagai ${esc(opsi.sesiLama.role === 'admin' ? 'Admin' : 'Guru')} · ${esc((opsi.sesiLama.user || {}).nama || '')}</div></div></div>
+            <div class="row-gap mt-12"><button class="btn btn-primary btn-sm" data-lanjut style="flex:1">${icon('arrow-right')} Lanjutkan</button><button class="btn btn-light btn-sm" data-keluar-lama style="flex:1">${icon('log-out')} Keluar</button></div></div>` : ''}
           <div class="card card-pad" style="padding:22px">
             <div class="seg full mb-16"><button class="${ui.peran === 'guru' ? 'on' : ''}" data-peran="guru">${icon('graduation-cap')} Guru</button><button class="${ui.peran === 'admin' ? 'on' : ''}" data-peran="admin">${icon('shield-check')} Admin</button></div>
             <form id="flogin" class="form-stack" autocomplete="on">
@@ -185,6 +188,11 @@
       $$('[data-peran]').forEach((b) => b.onclick = () => { ui.peran = b.dataset.peran; render(); });
       const pk = $('[data-pick]'); if (pk) pk.onclick = () => { ui.buka = !ui.buka; render(); };
       $$('[data-g]').forEach((b) => b.onclick = () => { ui.guruId = b.dataset.g; ui.buka = false; render(); setTimeout(() => $('#l-pass').focus(), 30); });
+      const lj = $('[data-lanjut]'); if (lj) lj.onclick = () => lanjutSesi(opsi.sesiLama);
+      const kl = $('[data-keluar-lama]'); if (kl) kl.onclick = () => {
+        U.api('logout', { token: opsi.sesiLama.token }).catch(() => { });
+        U.ls.del(LS_SESI); A.S.token = null; opsi.sesiLama = null; U.toast('Anda sudah keluar'); render();
+      };
       $('[data-eye]').onclick = (e) => { const p = $('#l-pass'); p.type = p.type === 'password' ? 'text' : 'password'; e.currentTarget.innerHTML = icon(p.type === 'password' ? 'eye' : 'eye-off'); };
       $('#flogin').onsubmit = async (e) => {
         e.preventDefault();
@@ -497,7 +505,7 @@
     render(view) {
       const d = A.S.data;
       const ui = A.ui.riwayat = A.ui.riwayat || { bulan: U.ymNow() };
-      const bulan = Object.keys(d.riwayat || {}).sort().reverse();
+      const bulan = Object.keys(d.riwayat || {}).sort();
       const r = (d.riwayat || {})[ui.bulan] || { hari: 0, siswa: 0, banyak: 0, tanggal: [] };
       const ambang = +d.settings.ambang_siswa_banyak || 10;
       view.innerHTML = `<div class="page-head"><div><h1>Riwayat Mengajar</h1><p>Rekap hari mengajar dan jumlah siswa yang Anda bimbing.</p></div></div>
@@ -520,6 +528,13 @@
   // ======================================================================
   function boot() {
     const sesi = U.ls.get(LS_SESI, null);
+    // Dibuka dari tombol "Masuk" di landing page → selalu tampilkan halaman login
+    const minta = new URLSearchParams(location.search).has('masuk');
+    if (minta) history.replaceState(null, '', location.pathname + location.hash);
+    if (sesi && sesi.token && minta) { tampilLogin({ sesiLama: sesi }); return; }
+    lanjutSesi(sesi);
+  }
+  function lanjutSesi(sesi) {
     if (sesi && sesi.token) {
       const cache = U.ls.get(LS_DATA + sesi.role, null);
       A.S.token = sesi.token; A.S.role = sesi.role; A.S.user = sesi.user;

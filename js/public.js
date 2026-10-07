@@ -46,7 +46,7 @@
       ${sub ? `<a class="btn btn-ghost btn-icon btn-sm" href="#/" aria-label="Kembali">${icon('arrow-left')}</a>` : ''}
       <a class="pub-brand" href="#/"><span class="lg">${U.logoHtml(s)}</span><span><b>${esc(s.nama_aplikasi || 'Ahe & Ala')}</b><small>${esc(sub || s.slogan || 'Les Baca & Berhitung')}</small></span></a>
       ${sub ? '' : `<nav class="pub-links">${links.map(([id, l]) => `<a href="#/" data-go="${id}">${l}</a>`).join('')}</nav>`}
-      <div class="acts">${sub ? '' : `<a class="btn btn-light btn-sm d-only" href="app.html">Masuk</a>`}
+      <div class="acts">${sub ? '' : `<a class="btn btn-light btn-sm d-only" href="app.html?masuk=1">Masuk</a>`}
         ${!sub && buka() ? `<a class="btn btn-accent btn-sm btn-pill" href="#/daftar">Daftar Sekarang</a>` : ''}</div>
     </div></header>`;
   }
@@ -68,6 +68,8 @@
   function fotoGaleri() { return (D.galeri || []).filter((g) => g.jenis === 'foto' && g.tampil !== 'tidak').sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0)); }
   function videoGaleri() { return (D.galeri || []).filter((g) => g.jenis === 'video' && g.tampil !== 'tidak').sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0)); }
 
+  // Bagian baru (mis. statistik) tetap tampil walau data lama belum memilikinya
+  const seksiLengkap = () => { const l = (D.sections || []).slice(); if (!l.some((s) => s.id === 'statistik')) l.push({ id: 'statistik', urutan: '1.5', tampil: 'ya', judul: 'Bersama Kami Anak Makin Percaya Diri', subjudul: 'Jumlah murid yang sedang belajar membaca dan berhitung bersama kami saat ini.', isi: '{}' }); return l; };
   const judulSeksi = (kick, s) => `<div class="sec-title"><span class="kick">${kick}</span><h2>${esc(s.judul || '')}</h2>${s.subjudul ? `<p>${esc(s.subjudul)}</p>` : ''}</div>`;
   const kosongPublik = (ic, teks) => `<div class="pub-empty"><span class="icon-dot lg">${icon(ic, 'ic-lg')}</span><p>${teks}</p></div>`;
   const R = {
@@ -87,6 +89,14 @@
             ${set().wa_admin ? `<a class="btn btn-glass btn-lg btn-pill" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin, 'Assalamu\'alaikum, saya ingin bertanya tentang les baca & berhitung.')}">${icon('message-circle')} Tanya via WhatsApp</a>` : ''}</div>
         </div></div></section>
         ${poin.length ? `<div class="wrap"><div class="trust">${poin.map((t, k) => `<div class="trust-i"><span class="icon-dot ${['', 'ala', 'acc', 'sun'][k % 4]}">${icon(ikonPoin[k % 4])}</span><b>${esc(t)}</b></div>`).join('')}</div></div>` : ''}`;
+    },
+    statistik(s) {
+      const st = D.statistik;
+      if (!st || !(+st.ahe + +st.ala)) return '';
+      const item = [['book-open', '', st.ahe, 'Murid Les Baca', 'Metode Ahe · Level 1–7'], ['calculator', 'ala', st.ala, 'Murid Les Berhitung', 'Metode Ala · Level 1–16'], ['award', 'sun', st.alumni, 'Alumni Berpiagam', 'Telah menuntaskan program'], ['users', 'acc', st.guru, 'Guru Pembimbing', 'Sabar & berpengalaman']].filter((x) => +x[2] > 0);
+      return `<section class="sec stat-sec" id="sec-statistik"><div class="wrap">${judulSeksi('Murid Kami', s)}
+        <div class="stat-band">${item.map(([ic, cls, n, l, sub]) => `<div class="stat-item"><span class="icon-dot lg ${cls}">${icon(ic, 'ic-lg')}</span><div><div class="stat-num" data-angka="${+n}">${+n}</div><b>${l}</b><small>${sub}</small></div></div>`).join('')}</div>
+        <p class="stat-note">${icon('sparkles', 'ic-sm')} Total <b>${+st.ahe + +st.ala}</b> murid sedang belajar saat ini</p></div></section>`;
     },
     pengumuman() {
       const l = (D.libur || [])[0];
@@ -159,7 +169,7 @@
   }
   function landing() {
     document.body.classList.toggle('has-mbar', true);
-    const urut = (D.sections || []).slice().sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0));
+    const urut = seksiLengkap().sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0));
     let html = nav();
     urut.forEach((s) => {
       if (s.tampil === 'tidak' || s.id === 'kontak') return;
@@ -167,13 +177,24 @@
       if (R[s.id]) html += R[s.id](s);
     });
     html += footer();
-    html += `<div class="mbar">${set().wa_admin ? `<a class="btn btn-wa" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin)}">${icon('message-circle')} Hubungi WA</a>` : `<a class="btn btn-light" href="app.html">Masuk</a>`}
+    html += `<div class="mbar">${set().wa_admin ? `<a class="btn btn-wa" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin)}">${icon('message-circle')} Hubungi WA</a>` : `<a class="btn btn-light" href="app.html?masuk=1">Masuk</a>`}
       ${buka() ? `<a class="btn btn-accent" href="#/daftar">Daftar Sekarang ${icon('arrow-right')}</a>` : ''}</div>`;
     root.innerHTML = html;
     pasangLanding();
   }
 
   function pasangLanding() {
+    // Angka statistik berjalan naik saat terlihat
+    const angka = $$('[data-angka]');
+    if (angka.length && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const io = new IntersectionObserver((es) => es.forEach((e) => {
+        if (!e.isIntersecting) return; io.unobserve(e.target);
+        const el = e.target, akhir = +el.dataset.angka, t0 = performance.now();
+        const langkah = (t) => { const k = Math.min(1, (t - t0) / 900); el.textContent = Math.round(akhir * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(langkah); };
+        el.textContent = '0'; requestAnimationFrame(langkah);
+      }), { threshold: 0.4 });
+      angka.forEach((el) => io.observe(el));
+    }
     // Gambar yang gagal dimuat (link mati) tidak ditampilkan sebagai ikon rusak
     $$('.banner-media img').forEach((img) => img.addEventListener('error', () => { img.closest('.banner').classList.remove('ada-foto'); img.remove(); }, { once: true }));
     $$('#gal figure img').forEach((img) => img.addEventListener('error', () => { img.closest('figure').classList.add('hidden'); }, { once: true }));

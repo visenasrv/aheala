@@ -102,6 +102,8 @@ Semua pengiriman, baik berhasil maupun gagal, tercatat di **Riwayat pengiriman**
 
 Di **Pengaturan → WhatsApp → Template pesan otomatis**, pilih template, ubah teksnya, periksa **pratinjau** di bawahnya, lalu klik **Simpan**.
 
+**Menonaktifkan template:** matikan sakelar **Pesan ini aktif** di atas kotak template. Template yang nonaktif ditandai di tab-nya dan pesannya tidak dikirim otomatis (pengiriman WA lain tetap jalan). Nyalakan lagi kapan saja.
+
 Kata dalam kurung kurawal akan diganti otomatis:
 
 | Kode | Diganti dengan |

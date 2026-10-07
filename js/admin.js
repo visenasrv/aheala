@@ -56,13 +56,23 @@
     });
     laporan(Aksi.terapkan(hasil, 'Tetapkan level'), lewati, 'ditetapkan ke Level ' + lv, 'level di luar rentang program');
   };
-  Aksi.naik = (ids) => {
+  // Naik 1 level — selalu dengan jendela konfirmasi (Iya / Tidak)
+  Aksi.naik = async (ids) => {
     const { hasil, lewati } = tiapProgram(ids, (s, p) => {
       if (!p || p.status !== 'aktif' || +p.level >= R.MAKS[p.program]) return null;
       const dari = +p.level; p.level = String(dari + 1); p.buku = 'belum';
-      return { p, riw: [riw(s, p, 'naik', dari, dari + 1)] };
+      return { p, s, dari, riw: [riw(s, p, 'naik', dari, dari + 1)] };
     });
-    laporan(Aksi.terapkan(hasil, 'Naik level'), lewati, 'naik 1 level', 'tidak aktif / sudah level akhir — gunakan Tuntaskan');
+    if (!hasil.length) { laporan(0, lewati, 'naik 1 level', 'tidak aktif / sudah level akhir — gunakan Tuntaskan'); return 0; }
+    const baris = (x) => `<b>${esc(x.s.nama)}</b> · ${esc(R.SINGKAT[x.p.program])} Level ${x.dari} → <b>Level ${x.dari + 1}</b>${x.p.program === 'ala' && x.dari === 6 ? ' <span class="chip chip-sm chip-ala">mulai Kali-Bagi</span>' : ''}`;
+    const teks = hasil.length === 1
+      ? `${esc(hasil[0].s.nama)} akan dinaikkan dari <b>${esc(R.LABEL[hasil[0].p.program])} Level ${hasil[0].dari}</b> ke <b>Level ${hasil[0].dari + 1}</b>.<br><span class="small muted">Status buku otomatis menjadi "belum punya buku" untuk level baru.</span>`
+      : `<div class="stack-sm mt-8">${hasil.slice(0, 6).map((x) => `<div class="small">${baris(x)}</div>`).join('')}${hasil.length > 6 ? `<div class="small muted">+ ${hasil.length - 6} siswa lainnya</div>` : ''}</div>${lewati.length ? `<p class="small muted mt-8">${lewati.length} siswa dilewati (tidak aktif / sudah level akhir).</p>` : ''}`;
+    const ok = await U.confirm({ title: hasil.length === 1 ? `Naikkan ke Level ${hasil[0].dari + 1}?` : `Naikkan ${hasil.length} siswa 1 level?`, text: teks, ok: 'Iya, naikkan', batal: 'Tidak' });
+    if (!ok) return 0;
+    const n = Aksi.terapkan(hasil, 'Naik level');
+    laporan(n, lewati, hasil.length === 1 ? 'naik ke Level ' + (hasil[0].dari + 1) : 'naik 1 level', 'tidak aktif / sudah level akhir — gunakan Tuntaskan');
+    return n;
   };
   Aksi.buku = (ids, v) => {
     const { hasil, lewati } = tiapProgram(ids, (s, p) => { if (!p || p.buku === v) return null; p.buku = v; return { p }; });
@@ -114,6 +124,7 @@
   };
 
   // Pengiriman WA langsung (Fonnte) dengan cadangan wa.me
+  A.tplAktif = (key) => !String((D().settings || {}).tpl_nonaktif || '').split(',').includes(key);
   A.isiTpl = (key, vars) => String((D().settings || {})[key] || '').replace(/\{([a-z_]+)\}/g, (m, k) => vars[k] !== undefined ? vars[k] : m);
   A.varsSiswa = (s, extra) => {
     const set = D().settings || {}; const p = R.prog(s.id);
@@ -144,20 +155,20 @@
     title: 'Dashboard', crumb: 'Dashboard',
     render(view) {
       const d = D(), set = d.settings;
-      const ui = A.ui.dash = A.ui.dash || { ym: U.ymNow() };
+      const ui = A.ui.dash = A.ui.dash || { dari: U.ymNow(), sampai: U.ymNow() };
+      if (!ui.dari) { ui.dari = ui.sampai = ui.ym || U.ymNow(); }
+      const satu = ui.dari === ui.sampai;
       const siswa = R.siswaTerdaftar();
       const per = { aktif: [], rehat: [], lulus: [] };
       siswa.forEach((s) => { const st = R.status(s.id); if (per[st]) per[st].push(s); });
       const aktifAhe = per.aktif.filter((s) => R.prog(s.id).program === 'ahe').length;
       const guruAktif = (d.guru || []).filter((g) => !g.tglKeluar || g.tglKeluar > U.today());
       const menunggu = (d.siswa || []).filter((s) => s.statusDaftar === 'menunggu').length;
-      const sppB = ringkasSpp(ui.ym);
+      const sppB = A.ringkasSppRentang(ui.dari, ui.sampai);
       const pr = R.peringatan();
       const persen = sppB.wajib ? Math.round(sppB.lunasN / sppB.wajib * 100) : 0;
-      const bln = [];
-      for (let i = -12; i <= 1; i++) bln.push(U.addMonths(U.ymNow(), i));
       view.innerHTML = `<div class="page-head"><div><h1>Ringkasan Les</h1><p>${esc(set.nama_lembaga || '')} · ${esc(U.tglHari(U.today()))}</p></div>
-        <div class="actions"><select class="input" id="dash-ym" style="min-height:40px;width:auto">${bln.map((b) => `<option value="${b}" ${b === ui.ym ? 'selected' : ''}>${U.bulan(b)}</option>`).join('')}</select>
+        <div class="actions">${U.tombolPeriode('dash-per', ui.dari, ui.sampai)}
         <button class="btn btn-light btn-sm" id="dash-sync">${icon('refresh-cw')} Sinkronkan</button></div></div>
         <div class="stats six">
           <a class="card stat" href="#/siswa?st=aktif"><div class="top"><span class="lbl">Siswa aktif</span><span class="icon-dot sm">${icon('graduation-cap')}</span></div><div class="val num">${per.aktif.length}</div><div class="sub">Baca ${aktifAhe} · Berhitung ${per.aktif.length - aktifAhe}</div><div class="bar"><i style="width:${per.aktif.length ? aktifAhe / per.aktif.length * 100 : 0}%"></i></div></a>
@@ -165,7 +176,7 @@
           <a class="card stat" href="#/siswa?st=lulus"><div class="top"><span class="lbl">Lulus</span><span class="icon-dot sm sun">${icon('award')}</span></div><div class="val num">${per.lulus.length}</div><div class="sub">Total alumni berpiagam</div></a>
           <a class="card stat" href="#/guru"><div class="top"><span class="lbl">Guru aktif</span><span class="icon-dot sm ala">${icon('users')}</span></div><div class="val num">${guruAktif.length}</div><div class="sub">${(d.hadirGuru || []).filter((h) => h.tanggal === U.today()).length} hadir hari ini</div></a>
           <a class="card stat ${menunggu ? 'hl' : ''}" href="#/pendaftar"><div class="top"><span class="lbl">Pendaftar menunggu</span><span class="icon-dot sm acc">${icon('user-plus')}</span></div><div class="val num">${menunggu}</div><div class="sub">${menunggu ? 'Perlu ditinjau' : 'Semua sudah diproses'}</div></a>
-          <a class="card stat" href="#/spp/${ui.ym}"><div class="top"><span class="lbl">SPP ${U.bln(ui.ym)}</span><span class="icon-dot sm ok">${icon('banknote')}</span></div><div class="val sm num">${U.rp(sppB.lunas)}</div><div class="sub">${persen}% lunas · belum ${U.rp(sppB.belum)}</div><div class="bar ok"><i style="width:${persen}%"></i></div></a>
+          <a class="card stat" href="#/spp/${satu ? ui.dari : ui.dari + '_' + ui.sampai}"><div class="top"><span class="lbl">SPP ${esc(satu ? U.bln(ui.dari) : U.labelPeriode(ui.dari, ui.sampai))}</span><span class="icon-dot sm ok">${icon('banknote')}</span></div><div class="val sm num">${U.rp(sppB.lunas)}</div><div class="sub">${persen}% lunas · belum ${U.rp(sppB.belum)}</div><div class="bar ok"><i style="width:${persen}%"></i></div></a>
         </div>
         <div class="card mt-16"><div class="card-head"><h3><span class="dot" style="color:var(--bad)"></span> Peringatan Otomatis</h3><span class="small muted">${icon('clock', 'ic-sm')} Dicek setiap hari pukul 07.00 WITA · tampilan diperbarui seketika</span></div>
           <div class="card-body"><div class="alerts">
@@ -181,9 +192,14 @@
           <div class="card"><div class="card-head"><h3>${icon('banknote')} Pendapatan SPP per Bulan</h3><div class="legend"><span><i style="background:#16A34A"></i>Lunas</span><span><i style="background:#FCA5A5"></i>Belum</span></div></div><div class="card-body"><div class="chart-box"><canvas id="ch-spp"></canvas></div></div></div>
           <div class="card"><div class="card-head"><h3>${icon('calendar-check')} Hari Mengajar per Guru</h3><div class="legend"><span><i style="background:var(--p)"></i>Reguler</span><span><i style="background:var(--sun)"></i>&gt; ${+set.ambang_siswa_banyak || 10} siswa</span></div></div><div class="card-body" id="hb-guru">${A.kosong('loader-circle', 'Memuat…')}</div></div>
         </div>`;
-      $('#dash-ym').onchange = (e) => { ui.ym = e.target.value; A.render(); };
+      $('#dash-per').onclick = async () => {
+        const r = await U.pilihPeriode({ dari: ui.dari, sampai: ui.sampai, max: U.ymNow().slice(0, 4) + '-12', min: '2020-01' }); if (!r) return;
+        ui.dari = r.dari; ui.sampai = r.sampai;
+        try { if (await A.pastikanSpp(ui.dari)) U.toast('Data SPP lama dimuat', 'info'); } catch (e) { U.toast(e.message, 'bad'); }
+        A.render();
+      };
       $('#dash-sync').onclick = () => { U.toast('Menyinkronkan data…', 'info'); A.segarkan(); };
-      hariMengajar(ui.ym);
+      hariMengajar(ui.dari, ui.sampai);
       grafik();
     }
   });
@@ -202,21 +218,41 @@
     return { lunas, lunasN, belum, wajib };
   }
   A.ringkasSpp = ringkasSpp;
-  async function hariMengajar(ym) {
+  A.ringkasSppRentang = (dari, sampai) => {
+    const t = { lunas: 0, lunasN: 0, belum: 0, wajib: 0 };
+    for (let b = dari; b <= sampai; b = U.addMonths(b, 1)) { const r = ringkasSpp(b); t.lunas += r.lunas; t.lunasN += r.lunasN; t.belum += r.belum; t.wajib += r.wajib; }
+    return t;
+  };
+  // Data SPP lokal hanya ±13 bulan terakhir; bulan lebih lama diambil dari server bila diperlukan
+  A.pastikanSpp = async (dari) => {
+    const lokalMin = U.addMonths(U.ymNow(), -13);
+    if (dari >= lokalMin || (A._sppDari && A._sppDari <= dari)) return false;
+    const sampai = U.addMonths(lokalMin, -1);
+    const r = await U.api('getRekap', { token: A.S.token, dari, sampai: sampai < dari ? dari : sampai, hanya: 'spp' });
+    A.mut((dd) => {
+      const ada = new Set(dd.spp.map((x) => x.id)); (r.spp || []).forEach((x) => { if (!ada.has(x.id)) dd.spp.push(x); });
+      const adaK = new Set(dd.kuitansi.map((x) => x.id)); (r.kuitansi || []).forEach((x) => { if (!adaK.has(x.id)) dd.kuitansi.push(x); });
+    }, { render: false });
+    A._sppDari = dari;
+    return true;
+  };
+  async function hariMengajar(dari, sampai) {
     const el = $('#hb-guru');
+    sampai = sampai || dari;
+    const ym = dari;
     let rows;
-    if (ym === D().hadirBulan) rows = D().hadirGuru || [];
-    else { try { rows = (await A.ambilRekap(ym, ym)).hadirGuru; } catch (e) { el.innerHTML = A.kosong('cloud-off', 'Tidak dapat memuat', esc(e.message)); return; } }
+    if (dari === sampai && dari === D().hadirBulan) rows = D().hadirGuru || [];
+    else { try { rows = (await A.ambilRekap(dari, sampai > U.ymNow() ? U.ymNow() : sampai)).hadirGuru; } catch (e) { el.innerHTML = A.kosong('cloud-off', 'Tidak dapat memuat', esc(e.message)); return; } }
     if (!$('#hb-guru')) return;
     const ambang = +D().settings.ambang_siswa_banyak || 10;
-    const hl = R.hariLesBulan(ym).length || 20;
+    let hl = 0; for (let b = dari; b <= sampai; b = U.addMonths(b, 1)) hl += R.hariLesBulan(b).length; hl = hl || 20;
     const per = {};
     rows.forEach((r) => { const x = per[r.guruId] = per[r.guruId] || { nama: r.namaGuru, n: 0, banyak: 0 }; x.n++; if (+r.jumlahSiswa > ambang) x.banyak++; });
     (D().guru || []).forEach((g) => { if (!per[g.id] && (!g.tglKeluar || g.tglKeluar > ym + '-01')) per[g.id] = { nama: g.panggilan || g.nama, n: 0, banyak: 0 }; if (per[g.id]) per[g.id].nama = g.panggilan || g.nama; });
     const list = Object.values(per).sort((a, b) => b.n - a.n);
     el.innerHTML = list.length ? `<div class="hbar">${list.map((x, i) => `<div class="row"><div class="lab"><b>${i + 1}. ${esc(x.nama)}</b><span class="muted">${x.n} hari${x.banyak ? ` · <b style="color:var(--accent-700)">${x.banyak} hari &gt;${ambang} siswa</b>` : ''}</span></div>
       <div class="track"><i style="width:${(x.n - x.banyak) / hl * 100}%;background:var(--p)"></i><i style="width:${x.banyak / hl * 100}%;background:var(--sun)"></i></div></div>`).join('')}
-      <p class="tiny muted">Dari ${hl} hari les di ${U.bulan(ym)}</p></div>` : A.kosong('users', 'Belum ada data guru', '', '<a class="btn btn-soft btn-sm" href="#/guru">Tambah guru</a>');
+      <p class="tiny muted">Dari ${hl} hari les · ${esc(U.labelPeriode(dari, sampai))} · <a href="#/kehadiran/hari">Lihat jumlah siswa per guru per hari ${icon('arrow-right', 'ic-sm')}</a></p></div>` : A.kosong('users', 'Belum ada data guru', '', '<a class="btn btn-soft btn-sm" href="#/guru">Tambah guru</a>');
   }
   let genGrafik = 0;
   async function grafik() {
@@ -365,7 +401,7 @@
           <div class="field"><label>Program</label><select class="input" id="t-prog"><option value="ahe" ${pm.program === 'ahe' ? 'selected' : ''}>Les Baca (Ahe)</option><option value="ala" ${pm.program === 'ala' ? 'selected' : ''}>Les Berhitung (Ala)</option></select></div>
           <div class="field"><label>Level awal <span class="req">*</span></label><select class="input" id="t-lv"></select></div>
           <div class="field"><label>Buku level awal</label><select class="input" id="t-buku"><option value="belum">Belum punya buku</option><option value="ya">Sudah punya buku</option></select></div>
-          <label class="check">${''}<input type="checkbox" id="t-wa" ${s.wa ? 'checked' : ''}><span class="box">${icon('check')}</span><span>Kirim WhatsApp konfirmasi ke orang tua</span></label></div>`}`,
+          <label class="check">${''}<input type="checkbox" id="t-wa" ${s.wa && A.tplAktif('tpl_wa_terima') ? 'checked' : ''} ${A.tplAktif('tpl_wa_terima') ? '' : 'disabled'}><span class="box">${icon('check')}</span><span>Kirim WhatsApp konfirmasi ke orang tua</span></label></div>`}`,
       foot: lihat ? `<a class="btn btn-wa" target="_blank" rel="noopener" href="${U.waLink(s.wa)}">${icon('message-circle')} Hubungi</a><a class="btn btn-primary" href="#/siswa/${s.id}" data-n>Buka detail siswa</a>`
         : `<button class="btn btn-danger-ghost" data-tl>${icon('circle-x')} Tolak</button><span class="spacer"></span><button class="btn btn-primary" data-ok>${icon('circle-check')} Terima & Aktifkan</button>`
     });
@@ -387,19 +423,22 @@
   A.page('siswa', {
     title: 'Siswa', crumb: 'Data Siswa',
     render(view, params, qs) {
-      const ui = A.ui.siswa = A.ui.siswa || { st: 'semua', q: '', prog: '', lv: '', kel: '', buku: '', f: '', hal: 1, sel: new Set(), qsKey: '' };
+      const ui = A.ui.siswa = A.ui.siswa || { st: 'belajar', q: '', prog: '', lv: '', kel: '', buku: '', f: '', hal: 1, sel: new Set(), qsKey: '', tetap: new Set() };
+      if (!ui.tetap) ui.tetap = new Set();
       const key = qs.toString();
-      if (key && key !== ui.qsKey) { ui.qsKey = key; ui.st = qs.get('st') || 'semua'; ui.f = qs.get('f') || ''; ui.buku = ''; ui.hal = 1; ui.sel.clear(); if (ui.f === 'buku') { ui.buku = 'belum'; ui.f = ''; ui.st = 'aktif'; } }
+      if (key && key !== ui.qsKey) { ui.qsKey = key; ui.tetap.clear(); ui.st = qs.get('st') || 'belajar'; ui.f = qs.get('f') || ''; ui.buku = ''; ui.hal = 1; ui.sel.clear(); if (ui.f === 'buku') { ui.buku = 'belum'; ui.f = ''; ui.st = 'aktif'; } }
       const pr = R.peringatan();
       const setF = { absen: new Set(pr.absen.map((x) => x.s.id)), tunggak: new Set(pr.tunggakan.map((x) => x.s.id)), piagam: new Set(pr.piagam.map((x) => x.s.id)) };
       const absenInfo = {}; pr.absen.forEach((x) => { absenInfo[x.s.id] = x.a; });
       const semua = R.siswaTerdaftar();
-      const jml = { semua: semua.length, aktif: 0, rehat: 0, lulus: 0, kurang: 0 };
-      semua.forEach((s) => { const st = R.status(s.id); if (jml[st] !== undefined) jml[st]++; if (s.lengkap !== 'ya') jml.kurang++; });
+      const jml = { semua: semua.length, belajar: 0, aktif: 0, rehat: 0, lulus: 0, kurang: 0 };
+      semua.forEach((s) => { const st = R.status(s.id); if (jml[st] !== undefined) jml[st]++; if (st === 'aktif' || st === 'rehat') jml.belajar++; if (s.lengkap !== 'ya') jml.kurang++; });
       const q = ui.q.trim().toLowerCase();
       let rows = semua.filter((s) => {
         const p = R.prog(s.id), st = p ? p.status : 'belum';
-        if (ui.st === 'kurang' ? s.lengkap === 'ya' : ui.st !== 'semua' && st !== ui.st) return false;
+        // Siswa yang baru diubah tetap terlihat walau tidak lagi cocok dengan filter (mis. filter Level)
+        if (ui.tetap.has(s.id)) return true;
+        if (ui.st === 'kurang' ? s.lengkap === 'ya' : ui.st === 'belajar' ? (st !== 'aktif' && st !== 'rehat') : ui.st !== 'semua' && st !== ui.st) return false;
         if (ui.prog && (!p || p.program !== ui.prog)) return false;
         if (ui.lv && (!p || String(p.level) !== ui.lv)) return false;
         if (ui.kel && (!p || p.program !== 'ala' || R.kelompok(p) !== ui.kel)) return false;
@@ -414,7 +453,7 @@
       const fLabel = { absen: 'Tidak masuk > 2 minggu', tunggak: 'Tunggakan SPP 2 bulan', piagam: 'Siap piagam' }[ui.f];
       view.innerHTML = `<div class="page-head"><div><h1>Data Siswa</h1><p>Kelola data siswa, level program, buku, dan riwayat belajar seumur les.</p></div>
         <div class="actions"><a class="btn btn-light" href="#/siswa/impor">${icon('file-spreadsheet')} Impor Excel</a><button class="btn btn-primary" id="s-tambah">${icon('user-plus')} Tambah Siswa</button></div></div>
-        <div class="tabs mb-12">${[['semua', 'Semua'], ['aktif', 'Aktif'], ['rehat', 'Rehat'], ['lulus', 'Lulus']].map(([k, l]) => `<button class="tab ${ui.st === k ? 'on' : ''}" data-st="${k}">${l} <span class="n">${jml[k]}</span></button>`).join('')}
+        <div class="tabs mb-12">${[['belajar', 'Siswa Les'], ['aktif', 'Aktif'], ['rehat', 'Rehat'], ['lulus', 'Lulus / Alumni'], ['semua', 'Semua']].map(([k, l]) => `<button class="tab ${ui.st === k ? 'on' : ''}" data-st="${k}">${k === 'lulus' ? icon('award', 'ic-sm') + ' ' : ''}${l} <span class="n">${jml[k]}</span></button>`).join('')}
           <button class="tab warn ${ui.st === 'kurang' ? 'on' : ''}" data-st="kurang">${icon('triangle-alert', 'ic-sm')} Data belum lengkap <span class="n">${jml.kurang}</span></button></div>
         <div class="card mb-12"><div class="filters">
           <div class="input-icon search">${icon('search')}<input class="input" id="s-q" placeholder="Cari nama, kode REG, orang tua, nomor WA…" value="${esc(ui.q)}"></div>
@@ -424,9 +463,11 @@
           <select class="input" data-fl="buku"><option value="">Status buku</option><option value="ya" ${ui.buku === 'ya' ? 'selected' : ''}>Sudah punya buku</option><option value="belum" ${ui.buku === 'belum' ? 'selected' : ''}>Belum punya buku</option></select>
           <select class="input" data-fl="f"><option value="">Semua peringatan</option><option value="absen" ${ui.f === 'absen' ? 'selected' : ''}>Tidak masuk &gt; 2 minggu</option><option value="tunggak" ${ui.f === 'tunggak' ? 'selected' : ''}>Tunggakan SPP</option><option value="piagam" ${ui.f === 'piagam' ? 'selected' : ''}>Siap piagam</option></select>
           <button class="btn btn-ghost btn-sm" id="s-reset">${icon('rotate-ccw')} Reset</button></div>
+          ${ui.st === 'lulus' ? `<div class="note-box" style="margin:0 12px 12px">${icon('award')}<span>Siswa yang sudah <b>tuntas/lulus</b>. Lulusan Les Baca yang dilanjutkan ke Les Berhitung (pilih siswa → <b>Lanjut Berhitung</b>) otomatis kembali ke daftar <b>Siswa Les</b>.</span></div>` : ''}
+          ${ui.tetap.size ? `<div class="note-box ok" style="margin:0 12px 12px">${icon('info')}<span>${ui.tetap.size} siswa yang baru diubah tetap ditampilkan (ditandai). Mereka mengikuti filter lagi setelah Anda mengganti filter atau tab.</span></div>` : ''}
           ${fLabel ? `<div class="note-box warn" style="margin:0 12px 12px">${icon('filter')}<span>Menampilkan: <b>${fLabel}</b> (${total} siswa). ${ui.f === 'absen' ? 'Pilih siswa lalu tekan <b>Rehat</b> bila memang sedang berhenti sementara.' : ''}</span></div>` : ''}</div>
         <div class="card">${halRows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th class="w-check">${A.cek('data-all', halRows.length && halRows.every((r) => ui.sel.has(r.id)))}</th><th>Siswa</th><th>Program</th><th>Level</th><th>Kelompok</th><th>Buku</th><th>Status</th><th></th></tr></thead><tbody>
-          ${halRows.map((s) => { const p = R.prog(s.id); const ab = absenInfo[s.id]; return `<tr class="clickable ${ui.sel.has(s.id) ? 'sel' : ''}" data-row="${s.id}">
+          ${halRows.map((s) => { const p = R.prog(s.id); const ab = absenInfo[s.id]; return `<tr class="clickable ${ui.sel.has(s.id) ? 'sel' : ''} ${ui.tetap.has(s.id) ? 'baru-ubah' : ''}" data-row="${s.id}">
             <td class="w-check">${A.cek(`data-sel="${s.id}"`, ui.sel.has(s.id))}</td>
             <td class="t-main"><div class="person">${U.avatar(s.nama, s.id)}<div><div class="t-name">${esc(s.nama)} ${s.panggilan ? `<span class="muted small">(${esc(s.panggilan)})</span>` : ''}</div>
               <div class="t-sub"><span class="num">${esc(s.kode || '…')}</span>${s.ortu ? ' · Ortu: ' + esc(s.ortu) : ''}</div>
@@ -445,10 +486,10 @@
           <button class="btn lt" data-b="tuntas">${icon('star')} Tuntaskan</button><button class="btn hl" data-b="lanjut">Lanjut Berhitung ${icon('arrow-right')}</button>
           <button class="btn" data-b="semuaFilter">Pilih semua hasil (${total})</button></div><button class="btn x btn-icon" data-clear aria-label="Batalkan pilihan">${icon('x')}</button></div>` : ''}`;
       // Peristiwa
-      $$('[data-st]').forEach((b) => b.onclick = () => { ui.st = b.dataset.st; ui.hal = 1; A.render(); });
-      $$('[data-fl]').forEach((sl) => sl.onchange = () => { ui[sl.dataset.fl] = sl.value; ui.hal = 1; A.render(); });
-      $('#s-reset').onclick = () => { Object.assign(ui, { st: 'semua', q: '', prog: '', lv: '', kel: '', buku: '', f: '', hal: 1 }); ui.sel.clear(); A.go('/siswa'); A.render(); };
-      $('#s-q').oninput = U.debounce((e) => { ui.q = e.target.value; ui.hal = 1; A.refresh(true); const i = $('#s-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
+      $$('[data-st]').forEach((b) => b.onclick = () => { ui.st = b.dataset.st; ui.hal = 1; ui.tetap.clear(); A.render(); });
+      $$('[data-fl]').forEach((sl) => sl.onchange = () => { ui[sl.dataset.fl] = sl.value; ui.hal = 1; ui.tetap.clear(); A.render(); });
+      $('#s-reset').onclick = () => { Object.assign(ui, { st: 'belajar', q: '', prog: '', lv: '', kel: '', buku: '', f: '', hal: 1 }); ui.sel.clear(); ui.tetap.clear(); A.go('/siswa'); A.render(); };
+      $('#s-q').oninput = U.debounce((e) => { ui.q = e.target.value; ui.hal = 1; ui.tetap.clear(); A.refresh(true); const i = $('#s-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
       $$('[data-pg]').forEach((b) => b.onclick = () => { ui.hal = +b.dataset.pg; A.render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
       $$('[data-sel]').forEach((c) => c.onchange = () => { c.checked ? ui.sel.add(c.dataset.sel) : ui.sel.delete(c.dataset.sel); A.refresh(true); });
       const all = $('[data-all]'); if (all) all.onchange = () => { halRows.forEach((r) => all.checked ? ui.sel.add(r.id) : ui.sel.delete(r.id)); A.refresh(true); };
@@ -460,7 +501,8 @@
         const k = b.dataset.b;
         if (k === 'semuaFilter') { rows.forEach((r) => ui.sel.add(r.id)); return A.render(); }
         if (k === 'level') { const lv = await Aksi.pilihLevel('Tetapkan level ' + ids.length + ' siswa'); if (!lv) return; Aksi.setLevel(ids, lv.level, lv.program); }
-        if (k === 'naik') Aksi.naik(ids);
+        if (k === 'naik' && !(await Aksi.naik(ids))) return;
+        if (['level', 'naik', 'bukuYa', 'bukuBelum', 'rehat', 'aktif', 'tuntas', 'lanjut'].includes(k)) ids.forEach((id) => ui.tetap.add(id));
         if (k === 'bukuYa') Aksi.buku(ids, 'ya');
         if (k === 'bukuBelum') Aksi.buku(ids, 'belum');
         if (k === 'rehat') { if (!(await U.confirm({ title: 'Tandai ' + ids.length + ' siswa rehat?', text: 'Siswa rehat tidak muncul di daftar absen guru, tidak ditagih SPP, dan tidak dicek absen. Bisa diaktifkan kembali kapan saja tanpa daftar ulang.', ok: 'Tandai rehat' }))) return; Aksi.status(ids, 'rehat'); }

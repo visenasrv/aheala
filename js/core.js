@@ -236,6 +236,61 @@
       .observe(document.documentElement, { childList: true, subtree: true });
   }
 
+  // ---------------- Pemilih periode: 1 bulan, rentang bulan, atau 1 tahun ----------------
+  U.labelPeriode = (d, s) => {
+    if (!d) return '-'; s = s || d;
+    if (d === s) return U.bulan(d);
+    const y1 = d.slice(0, 4), y2 = s.slice(0, 4), m1 = +d.slice(5, 7) - 1, m2 = +s.slice(5, 7) - 1;
+    if (y1 === y2 && m1 === 0 && m2 === 11) return 'Tahun ' + y1;
+    if (y1 === y2) return U.BLN[m1] + ' – ' + U.BLN[m2] + ' ' + y1;
+    return U.BLN[m1] + ' ' + y1 + ' – ' + U.BLN[m2] + ' ' + y2;
+  };
+  U.tombolPeriode = (id, d, s) => `<button type="button" class="btn btn-light periode-btn" id="${id}">${U.icon('calendar')}<span>${U.esc(U.labelPeriode(d, s))}</span>${U.icon('chevron-down', 'ic-sm')}</button>`;
+  U.pilihPeriode = (o) => new Promise((resolve) => {
+    const min = o.min || '2020-01', max = o.max || U.addMonths(U.ymNow(), 12), batas = o.maksBulan || 24;
+    let a = o.dari || U.ymNow(), b = o.sampai || a, tahun = +(b || a).slice(0, 4), tahap = 0;
+    const jumlah = (x, y) => (+y.slice(0, 4) - +x.slice(0, 4)) * 12 + (+y.slice(5, 7) - +x.slice(5, 7)) + 1;
+    const m = U.modal({
+      title: 'Pilih periode', icon: 'calendar', size: 'sm',
+      body: `<div class="per-year"><button type="button" class="btn btn-light btn-icon btn-sm" data-y="-1" aria-label="Tahun sebelumnya">${U.icon('chevron-left')}</button><b id="per-th"></b><button type="button" class="btn btn-light btn-icon btn-sm" data-y="1" aria-label="Tahun berikutnya">${U.icon('chevron-right')}</button></div>
+        <div class="per-grid" id="per-grid"></div>
+        <div class="per-quick"><button type="button" class="btn btn-soft btn-sm" data-q="tahun"></button><button type="button" class="btn btn-light btn-sm" data-q="ini">Bulan ini</button><button type="button" class="btn btn-light btn-sm" data-q="3">3 bulan terakhir</button><button type="button" class="btn btn-light btn-sm" data-q="6">6 bulan terakhir</button></div>
+        <p class="tiny muted mt-12">${U.icon('info', 'ic-sm')} Klik <b>satu bulan</b>, atau klik <b>bulan awal</b> lalu <b>bulan akhir</b> untuk rentang (maks. ${batas} bulan). Bisa pindah tahun di antara dua klik.</p>
+        <div class="per-sel" id="per-sel"></div>`,
+      foot: `<button class="btn btn-light" data-n>Batal</button><button class="btn btn-primary" data-ok>${U.icon('check')} Terapkan</button>`,
+      onClose: () => resolve(null)
+    });
+    const gambar = () => {
+      m.$('#per-th').textContent = tahun;
+      m.$('#per-grid').innerHTML = U.BLN.map((nm, i) => {
+        const ym = tahun + '-' + String(i + 1).padStart(2, '0');
+        const mati = ym < min || ym > max;
+        const cls = (ym >= a && ym <= b ? 'in ' : '') + (ym === a ? 'awal ' : '') + (ym === b ? 'akhir ' : '') + (ym === U.ymNow() ? 'kini' : '');
+        return `<button type="button" class="per-m ${cls}" data-m="${ym}" ${mati ? 'disabled' : ''}>${nm}</button>`;
+      }).join('');
+      m.$('[data-q=tahun]').textContent = 'Satu tahun ' + tahun;
+      m.$('#per-sel').innerHTML = `Dipilih: <b>${U.esc(U.labelPeriode(a, b))}</b>${a !== b ? ` <span class="muted">(${jumlah(a, b)} bulan)</span>` : ''}${tahap === 1 ? ' <span class="chip chip-sm chip-warn">pilih bulan akhir…</span>' : ''}`;
+      m.$$('[data-m]').forEach((x) => x.onclick = () => {
+        const v = x.dataset.m;
+        if (tahap === 0) { a = b = v; tahap = 1; }
+        else { if (v < a) { b = a; a = v; } else b = v; tahap = 0; if (jumlah(a, b) > batas) { b = U.addMonths(a, batas - 1); U.toast('Rentang maksimal ' + batas + ' bulan', 'warn'); } }
+        gambar();
+      });
+    };
+    m.$$('[data-y]').forEach((x) => x.onclick = () => { tahun += +x.dataset.y; gambar(); });
+    m.$$('[data-q]').forEach((x) => x.onclick = () => {
+      const q = x.dataset.q, kini = U.ymNow();
+      if (q === 'tahun') { a = tahun + '-01'; b = tahun + '-12'; }
+      else if (q === 'ini') { a = b = kini; tahun = +kini.slice(0, 4); }
+      else { b = kini; a = U.addMonths(kini, 1 - +q); tahun = +kini.slice(0, 4); }
+      if (a < min) a = min; if (b > max) b = max; if (b < a) b = a;
+      tahap = 0; gambar();
+    });
+    m.$('[data-n]').onclick = () => m.close();
+    m.$('[data-ok]').onclick = () => { if (a < min) a = min; if (b > max) b = max; resolve({ dari: a, sampai: b < a ? a : b }); m.close(true); };
+    gambar();
+  });
+
   // ---------------- Menu aksi (tombol ⋯ → daftar pilihan) ----------------
   U.menu = (btn, items) => {
     const lama = U._menu;
@@ -311,7 +366,7 @@
     const m = U.modal({
       title: o.title || 'Konfirmasi', icon: o.danger ? 'triangle-alert' : 'info', iconCls: o.danger ? 'bad' : '',
       body: `<p>${o.text || ''}</p>${o.ketik ? `<div class="field mt-16"><label>Ketik <b>${U.esc(o.ketik)}</b> untuk melanjutkan</label><input class="input" data-k autocomplete="off"></div>` : ''}`,
-      foot: `<button class="btn btn-light" data-n>Batal</button><button class="btn ${o.danger ? 'btn-danger' : 'btn-primary'}" data-y ${o.ketik ? 'disabled' : ''}>${U.esc(o.ok || 'Ya, lanjutkan')}</button>`,
+      foot: `<button class="btn btn-light" data-n>${U.esc(o.batal || 'Batal')}</button><button class="btn ${o.danger ? 'btn-danger' : 'btn-primary'}" data-y ${o.ketik ? 'disabled' : ''}>${U.esc(o.ok || 'Ya, lanjutkan')}</button>`,
       onClose: () => resolve(false)
     });
     const y = m.$('[data-y]');
