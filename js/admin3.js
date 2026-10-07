@@ -223,9 +223,11 @@
           <p class="help">${icon('info', 'ic-sm')} Foto dikompres otomatis (maks 1600 px) sebelum disimpan ke Google Drive.</p>
           <div class="thumbs">${items.map((g) => `<div class="thumb"><img src="${esc(g.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"><button class="x" data-del-g="${g.id}" aria-label="Hapus">${icon('trash-2', 'ic-sm')}</button><input value="${esc(g.judul)}" data-cap="${g.id}" placeholder="Keterangan foto"></div>`).join('')}</div>`
         : `<div class="row-gap"><input class="input" id="v-url" placeholder="Tempel link YouTube / Facebook" style="flex:1"><button class="btn btn-primary" data-add-v>${icon('plus')} Tambah</button></div>
-          <p class="help">Contoh: youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/…, atau link video Facebook yang publik.</p>
+          <p class="help">Contoh: youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/…, atau link video Facebook.</p>
+          <div class="note-box warn">${icon('triangle-alert')}<span><b>Video Facebook</b> hanya bisa diputar di website bila: (1) privasi postingannya <b>Publik</b> (ikon 🌐), (2) diunggah di <b>Halaman/Page</b> atau profil yang mengizinkan sematan, bukan di grup tertutup. Pratinjau di bawah menunjukkan apakah video bisa diputar. Paling andal: unggah juga ke <b>YouTube</b> lalu pakai link YouTube.</span></div>
           <div class="stack-sm">${items.map((g) => { const yt = U.ytId(g.url); return `<div class="row-gap card soft card-pad" style="padding:10px">${yt ? `<img src="https://i.ytimg.com/vi/${yt}/default.jpg" alt="" style="width:80px;border-radius:8px">` : `<span class="icon-dot">${icon('facebook')}</span>`}
-            <div style="flex:1;min-width:0"><span class="chip chip-sm ${yt ? 'chip-bad' : 'chip-info'}">${yt ? 'YouTube' : 'Facebook'}</span><input class="input mt-8" style="min-height:36px" value="${esc(g.judul)}" data-cap="${g.id}" placeholder="Judul video"><div class="tiny muted ellipsis mt-8">${esc(g.url)}</div></div>
+            <div style="flex:1;min-width:0"><span class="chip chip-sm ${yt ? 'chip-bad' : 'chip-info'}">${yt ? 'YouTube' : 'Facebook'}</span><input class="input mt-8" style="min-height:36px" value="${esc(g.judul)}" data-cap="${g.id}" placeholder="Judul video"><div class="tiny muted ellipsis mt-8">${esc(g.url)}</div>
+              ${yt ? '' : `<details class="mt-8"><summary class="small strong" style="cursor:pointer">Cek apakah video bisa diputar</summary><div class="fb-cek mt-8"><iframe loading="lazy" title="Pratinjau video Facebook" src="${esc(U.fbEmbed(g.url))}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div><p class="tiny muted mt-8">Jika muncul "Video Tidak Tersedia", ubah privasi postingan menjadi Publik atau pakai link YouTube.</p></details>`}</div>
             <button class="btn btn-danger-ghost btn-icon btn-sm" data-del-g="${g.id}">${icon('trash-2')}</button></div>`; }).join('') || '<p class="small muted">Belum ada video.</p>'}</div>`}</div>`;
       bind();
       const tambahItem = (it) => {
@@ -239,7 +241,16 @@
       const lf = $('[data-link-foto]', el);
       if (lf) lf.onclick = async () => { const u = await U.prompt({ title: 'Tambah foto dari link', label: 'Alamat gambar (https://…)', icon: 'link', ok: 'Tambah' }); if (u && /^https?:\/\//.test(u.trim())) tambahItem({ url: u.trim() }); else if (u) U.toast('Link harus diawali https://', 'warn'); };
       const av = $('[data-add-v]', el);
-      if (av) av.onclick = () => { const u = $('#v-url').value.trim(); if (!/youtu\.?be|facebook\.com|fb\.watch/i.test(u)) return U.toast('Link harus dari YouTube atau Facebook', 'warn'); tambahItem({ url: u, judul: '' }); U.toast('Video ditambahkan'); };
+      if (av) av.onclick = async () => {
+        let u = $('#v-url').value.trim();
+        if (!/youtu\.?be|facebook\.com|fb\.watch/i.test(u)) return U.toast('Link harus dari YouTube atau Facebook', 'warn');
+        if (/facebook\.com\/share\/|fb\.watch/i.test(u)) { // link "Bagikan" → cari alamat asli video
+          av.disabled = true;
+          try { const r = await U.api('normalVideo', { token: A.S.token, url: u }); if (r && r.url) u = r.url; } catch (e) { /* pakai link apa adanya */ }
+          av.disabled = false;
+        }
+        tambahItem({ url: U.fbVideoUrl(u), judul: '' }); U.toast('Video ditambahkan'); A.render();
+      };
       $$('[data-cap]', el).forEach((i) => i.oninput = U.debounce(() => {
         const g = D().galeri.find((z) => z.id === i.dataset.cap); if (!g) return;
         g.judul = i.value; A.mut(() => { }, { render: false });

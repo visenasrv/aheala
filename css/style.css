@@ -846,3 +846,8 @@ body.public .ann { margin-top: 28px; }
 .date-in { min-width: 0; } .date-in > input.input { width: 100%; min-width: 0; }
 .grid-2 > * { min-width: 0; }
 .sticky-act .btn { white-space: normal; height: auto; min-height: 52px; line-height: 1.3; text-align: center; }
+.vcard .vb { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.vcard .vlink { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #1877F2; padding: 6px 10px; border-radius: 10px; background: #EAF2FE; }
+.vcard .vlink:hover { background: #D8E7FD; }
+.fb-cek { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #1c1e21; }
+.fb-cek iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

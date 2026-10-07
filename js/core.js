@@ -413,6 +413,17 @@
     }
   };
   U.logoHtml = (set, fallback) => set && set.logo_data ? `<img src="${U.esc(set.logo_data)}" alt="Logo">` : (fallback || '<span style="font-family:var(--f-head);font-weight:900;font-size:22px">A</span>');
+  // Rapikan link video Facebook agar bisa diputar pemutar resmi Facebook (m./web. → www., buang parameter pelacak)
+  U.fbVideoUrl = (url) => {
+    let u = String(url || '').trim();
+    if (!/facebook\.com|fb\.watch/i.test(u)) return u;
+    u = u.replace(/^http:\/\//i, 'https://').replace(/^(https:\/\/)(m|mbasic|web|touch|id-id)\.facebook\.com/i, '$1www.facebook.com').replace(/^https:\/\/facebook\.com/i, 'https://www.facebook.com');
+    const v = u.match(/[?&]v=(\d+)/);
+    if (/\/watch\/?\?/.test(u) && v) return 'https://www.facebook.com/watch/?v=' + v[1];
+    if (/\/(videos|reel|share)\//.test(u)) u = u.split('?')[0];
+    return u;
+  };
+  U.fbEmbed = (url, auto) => 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(U.fbVideoUrl(url)) + '&show_text=false&width=734' + (auto ? '&autoplay=true' : '');
   U.ytId = (url) => { if (!/youtu\.?be/i.test(String(url || ''))) return ''; const m = String(url || '').match(/(?:youtu\.be\/|v=|shorts\/|embed\/|live\/)([A-Za-z0-9_-]{6,})/); return m ? m[1] : ''; };
   U.urlBaseFrontend = () => location.origin + location.pathname.replace(/[^/]*$/, '');
 })();
