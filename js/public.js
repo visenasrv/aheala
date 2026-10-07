@@ -40,7 +40,7 @@
   // ---------------------------------------------------------------- Kerangka
   function nav(sub) {
     const s = set();
-    const links = [['metode', 'Metode'], ['program', 'Program & Level'], ['galeri', 'Galeri'], ['video', 'Video'], ['lokasi', 'Lokasi']]
+    const links = [['metode', 'Metode'], ['program', 'Program & Level'], ['galeri', 'Galeri'], ['video', 'Video'], ['lokasi', 'Lokasi'], ['kontak', 'Kontak']]
       .filter(([id]) => sec(id).tampil !== 'tidak');
     return `${s.mode_demo === 'ya' ? `<div class="demo-ribbon" title="Data di situs ini masih contoh untuk uji coba">${icon('sparkles', 'ic-sm')} Mode uji coba · data contoh</div>` : ''}<header class="pub-nav"><div class="in">
       ${sub ? `<a class="btn btn-ghost btn-icon btn-sm" href="#/" aria-label="Kembali">${icon('arrow-left')}</a>` : ''}
@@ -68,23 +68,25 @@
   function fotoGaleri() { return (D.galeri || []).filter((g) => g.jenis === 'foto' && g.tampil !== 'tidak').sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0)); }
   function videoGaleri() { return (D.galeri || []).filter((g) => g.jenis === 'video' && g.tampil !== 'tidak').sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0)); }
 
+  const judulSeksi = (kick, s) => `<div class="sec-title"><span class="kick">${kick}</span><h2>${esc(s.judul || '')}</h2>${s.subjudul ? `<p>${esc(s.subjudul)}</p>` : ''}</div>`;
+  const kosongPublik = (ic, teks) => `<div class="pub-empty"><span class="icon-dot lg">${icon(ic, 'ic-lg')}</span><p>${teks}</p></div>`;
   const R = {
     hero(s) {
       const x = isi(s);
       const foto = x.fotoUrl || (fotoGaleri()[0] || {}).url;
       const judul = esc(s.judul || 'Les Baca & Berhitung untuk Anak Hebat').replace(/(Anak Hebat)/, '<em>$1</em>');
-      return `<section class="hero" id="sec-hero"><span class="deco" style="font-size:180px;top:-30px;right:4%">ABC</span><span class="deco" style="font-size:140px;bottom:-30px;left:2%">123</span>
-        <div class="wrap hero-grid"><div>
-          ${buka() ? `<span class="badge">${icon('star', 'ic-sm ic-fill')} ${esc(x.badge || 'Pendaftaran Siswa Baru Dibuka')}</span>` : `<span class="badge" style="background:var(--neutral-50);color:var(--neutral-700)">${icon('circle-pause', 'ic-sm')} Pendaftaran sedang ditutup</span>`}
-          <h1>${judul}</h1><p class="lead">${esc(s.subjudul || '')}</p>
+      const poin = (x.poin || []).slice(0, 4);
+      const ikonPoin = ['heart', 'calendar-check', 'award', 'star'];
+      return `<section class="banner ${foto ? 'ada-foto' : ''}" id="sec-hero">
+        <div class="banner-media">${foto ? `<img src="${esc(foto)}" alt="${esc(set().nama_lembaga || 'Kegiatan belajar')}" loading="eager" fetchpriority="high" referrerpolicy="no-referrer">` : ''}</div>
+        <div class="banner-shade"></div>
+        <div class="wrap banner-in"><div class="banner-text">
+          ${buka() ? `<span class="badge">${icon('star', 'ic-sm ic-fill')} ${esc(x.badge || 'Pendaftaran Siswa Baru Dibuka')}</span>` : `<span class="badge tutup">${icon('circle-pause', 'ic-sm')} Pendaftaran sedang ditutup</span>`}
+          <h1>${judul}</h1>${s.subjudul ? `<p class="lead">${esc(s.subjudul)}</p>` : ''}
           <div class="ctas">${buka() ? `<a class="btn btn-accent btn-lg btn-pill" href="#/daftar">Daftar Sekarang ${icon('arrow-right')}</a>` : ''}
-            ${set().wa_admin ? `<a class="btn btn-wa btn-lg btn-pill" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin, 'Assalamu\'alaikum, saya ingin bertanya tentang les baca & berhitung.')}">${icon('message-circle')} Hubungi via WhatsApp</a>` : ''}</div>
-          <div class="points">${(x.poin || []).map((p) => `<div>${icon('check')} ${esc(p)}</div>`).join('')}</div>
-        </div>
-        <div class="hero-photo"><div class="ph">${foto ? `<img src="${esc(foto)}" alt="Kegiatan belajar" loading="eager" referrerpolicy="no-referrer">` : ilustrasi()}</div>
-          <div class="float-card a"><span class="icon-dot sm">${icon('book-open')}</span><div>Les Baca<small>Level 1–7</small></div></div>
-          <div class="float-card b"><span class="icon-dot sm ala">${icon('calculator')}</span><div>Les Berhitung<small>Level 1–16</small></div></div></div>
-        </div></section>`;
+            ${set().wa_admin ? `<a class="btn btn-glass btn-lg btn-pill" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin, 'Assalamu\'alaikum, saya ingin bertanya tentang les baca & berhitung.')}">${icon('message-circle')} Tanya via WhatsApp</a>` : ''}</div>
+        </div></div></section>
+        ${poin.length ? `<div class="wrap"><div class="trust">${poin.map((t, k) => `<div class="trust-i"><span class="icon-dot ${['', 'ala', 'acc', 'sun'][k % 4]}">${icon(ikonPoin[k % 4])}</span><b>${esc(t)}</b></div>`).join('')}</div></div>` : ''}`;
     },
     pengumuman() {
       const l = (D.libur || [])[0];
@@ -96,13 +98,13 @@
     metode(s) {
       const k = isi(s).kartu || [];
       const warna = ['', 'ala', 'acc'];
-      return `<section class="sec" id="sec-metode"><div class="wrap"><div class="sec-title"><span class="kick">Keunggulan Belajar</span><h2>${esc(s.judul)}</h2><p>${esc(s.subjudul)}</p></div>
+      return `<section class="sec" id="sec-metode"><div class="wrap">${judulSeksi('Keunggulan Belajar', s)}
         <div class="cards-3 swipe">${k.map((c, i) => `<div class="mcard"><span class="icon-dot lg ${warna[i % 3]}">${icon(c.ikon || 'star', 'ic-lg')}</span><h3>${esc(c.judul)}</h3><p>${esc(c.deskripsi)}</p></div>`).join('')}</div></div></section>`;
     },
     program(s) {
       const x = isi(s);
       const lv = (a, b, akhir, lbl) => { let h = ''; for (let i = a; i <= b; i++) h += i === akhir ? `<span class="lv end">${icon('star')} ${i} ${lbl}</span>` : `<span class="lv">${i}</span>`; return h; };
-      return `<section class="sec" id="sec-program" style="background:#fff"><div class="wrap"><div class="sec-title"><span class="kick">Struktur Kurikulum</span><h2>${esc(s.judul)}</h2><p>${esc(s.subjudul)}</p></div>
+      return `<section class="sec alt" id="sec-program"><div class="wrap">${judulSeksi('Struktur Kurikulum', s)}
         <div class="prog-grid">
           <div class="pcard"><div class="ph"><h3>${icon('book-open')} Les Baca (Ahe)</h3><span class="chip">Level 1–7</span></div>
             <div class="pb"><p>${esc(x.ahe || '')}</p><div class="stage" style="color:var(--p-700)">Tahapan level</div><div class="lvls">${lv(1, 7, 7, 'Piagam')}</div></div></div>
@@ -114,16 +116,14 @@
     },
     galeri(s) {
       const f = fotoGaleri();
-      if (!f.length) return '';
-      return `<section class="sec" id="sec-galeri"><div class="wrap"><div class="sec-title"><span class="kick">Dokumentasi Kelas</span><h2>${esc(s.judul)}</h2><p>${esc(s.subjudul)}</p></div>
-        <div class="gal" id="gal">${f.map((g, i) => `<figure data-foto="${i}" ${i >= 8 ? 'class="hidden"' : ''}><img src="${esc(g.url)}" alt="${esc(g.judul)}" loading="lazy" referrerpolicy="no-referrer">${g.judul ? `<figcaption>${esc(g.judul)}</figcaption>` : ''}</figure>`).join('')}</div>
+      return `<section class="sec" id="sec-galeri"><div class="wrap">${judulSeksi('Dokumentasi Kelas', s)}
+        ${f.length ? '' : kosongPublik('image', 'Foto kegiatan belajar akan segera ditampilkan di sini.')}<div class="gal" id="gal">${f.map((g, i) => `<figure data-foto="${i}" ${i >= 8 ? 'class="hidden"' : ''}><img src="${esc(g.url)}" alt="${esc(g.judul)}" loading="lazy" referrerpolicy="no-referrer">${g.judul ? `<figcaption>${esc(g.judul)}</figcaption>` : ''}</figure>`).join('')}</div>
         ${f.length > 8 ? `<div style="text-align:center" class="mt-16"><button class="btn btn-soft btn-pill" data-semua>Lihat semua foto (${f.length})</button></div>` : ''}</div></section>`;
     },
     video(s) {
       const v = videoGaleri();
-      if (!v.length) return '';
-      return `<section class="sec" id="sec-video" style="background:#fff"><div class="wrap"><div class="sec-title"><span class="kick">Video Kegiatan</span><h2>${esc(s.judul)}</h2><p>${esc(s.subjudul)}</p></div>
-        <div class="vids">${v.map((g, i) => {
+      return `<section class="sec alt" id="sec-video"><div class="wrap">${judulSeksi('Video Kegiatan', s)}
+        ${v.length ? '' : kosongPublik('play', 'Video keseruan belajar akan segera hadir.')}<div class="vids ${v.length === 1 ? 'satu' : ''}">${v.map((g, i) => {
           const yt = U.ytId(g.url);
           return `<div class="vcard"><div class="vthumb" data-video="${i}">${yt ? `<img src="https://i.ytimg.com/vi/${yt}/hqdefault.jpg" alt="" loading="lazy">` : ''}
             <span class="src ${yt ? '' : 'fb'}">${yt ? 'YouTube' : 'Facebook'}</span><span class="play">${icon('play')}</span></div><div class="vb">${esc(g.judul || 'Video kegiatan')}</div></div>`;
@@ -131,15 +131,17 @@
     },
     lokasi(s) {
       const x = isi(s);
-      const q = x.mapsQuery || x.alamat || set().alamat || '';
+      const st = set();
+      const alamat = x.alamat || U.alamatLengkap(st) || '';
+      const titik = x.mapsLat && x.mapsLng ? x.mapsLat + ',' + x.mapsLng : '';
+      const q = titik || x.mapsQuery || alamat;
       const link = x.mapsLink || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
-      return `<section class="sec" id="sec-lokasi"><div class="wrap"><div class="sec-title"><span class="kick">Kunjungi Kami</span><h2>${esc(s.judul)}</h2><p>${esc(s.subjudul)}</p></div>
-        <div class="loc"><div class="map">${q ? `<iframe loading="lazy" title="Peta lokasi" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed"></iframe>` : ''}</div>
-          <div class="card card-pad"><div class="info-list">
-            <div><span class="icon-dot sm">${icon('map-pin')}</span><div><b>Alamat</b><span class="muted">${esc(x.alamat || set().alamat || '-')}</span></div></div>
+      return `<section class="sec" id="sec-lokasi"><div class="wrap">${judulSeksi('Kunjungi Kami', s)}
+        <div class="loc"><div class="map">${q ? `<iframe loading="lazy" title="Peta lokasi" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=${titik ? 17 : 15}&hl=id&output=embed"></iframe>` : kosongPublik('map-pin', 'Peta lokasi belum diatur.')}</div>
+          <div class="card card-pad loc-card"><div class="info-list">
+            <div><span class="icon-dot sm">${icon('map-pin')}</span><div><b>Alamat</b><span class="muted">${esc(alamat || '-')}</span></div></div>
             <div><span class="icon-dot sm ala">${icon('clock')}</span><div><b>Jam Les</b><span class="muted">${esc(x.jam || 'Senin – Jumat')}</span><div class="small" style="color:var(--accent-700)">Sabtu, Minggu & hari libur khusus tutup</div></div></div>
-            ${set().wa_admin ? `<div><span class="icon-dot sm acc">${icon('phone')}</span><div><b>WhatsApp Admin</b><span class="muted">${esc(U.tampilWa(set().wa_admin))}</span></div></div>` : ''}
-          </div><div class="stack-sm mt-16"><a class="btn btn-soft btn-block" target="_blank" rel="noopener" href="${esc(link)}">${icon('external-link')} Buka di Google Maps</a>
+          </div><div class="stack-sm mt-16"><a class="btn btn-soft btn-block" target="_blank" rel="noopener" href="${esc(link)}">${icon('external-link')} Petunjuk arah di Google Maps</a>
             ${buka() ? `<a class="btn btn-accent btn-block" href="#/daftar">Daftar Siswa Baru ${icon('arrow-right')}</a>` : ''}</div></div></div></div></section>`;
     }
   };
@@ -147,16 +149,14 @@
   function footer() {
     const s = set();
     const x = isi(sec('kontak'));
-    const sos = [['facebook', x.facebook], ['instagram', x.instagram], ['youtube', x.youtube]].filter((z) => z[1]);
-    return `<footer class="pub-foot"><div class="wrap"><div class="grid">
-      <div><div class="pub-brand"><span class="lg" style="background:#fff">${U.logoHtml(s, '<span style="color:var(--p);font-weight:900;font-size:20px">A</span>')}</span><span><b style="color:#fff">${esc(s.nama_aplikasi || '')}</b><small style="color:rgba(255,255,255,.7)">${esc(s.nama_lembaga || '')}</small></span></div>
-        <p class="small mt-12" style="max-width:380px">${esc(x.tentang || '')}</p></div>
-      <div><h4>Navigasi</h4><div class="stack-sm small"><a href="#/" data-go="program">Program & Level</a>${buka() ? '<a href="#/daftar">Formulir Pendaftaran</a>' : ''}<a href="app.html">Masuk Guru & Admin</a></div></div>
-      <div><h4>Kontak</h4><div class="stack-sm small">${s.alamat ? `<span>${icon('map-pin', 'ic-sm')} ${esc(s.alamat)}</span>` : ''}${s.wa_admin ? `<a target="_blank" rel="noopener" href="${U.waLink(s.wa_admin)}">${icon('message-circle', 'ic-sm')} ${esc(U.tampilWa(s.wa_admin))}</a>` : ''}
-        ${sos.map(([n, u]) => `<a target="_blank" rel="noopener" href="${esc(u)}">${icon(n, 'ic-sm')} ${n[0].toUpperCase() + n.slice(1)}</a>`).join('')}</div></div>
-      </div><div class="bottom">© ${new Date().getFullYear()} ${esc(s.nama_lembaga || s.nama_aplikasi || '')}. Hak cipta dilindungi.</div></div></footer>`;
+    const sos = [['facebook', 'Facebook', x.facebook], ['instagram', 'Instagram', x.instagram], ['youtube', 'YouTube', x.youtube], ['tiktok', 'TikTok', x.tiktok]].filter((z) => z[2]);
+    const ikonTiktok = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.1v12.4a2.6 2.6 0 1 1-2.6-2.6c.3 0 .5 0 .8.1V9.7a5.8 5.8 0 1 0 5 5.7V9.1a7.3 7.3 0 0 0 4.3 1.4V7.4a4.3 4.3 0 0 1-3.3-1.6z"/></svg>';
+    return `<footer class="pub-foot" id="sec-kontak"><div class="wrap foot-in">
+      <h3>Hubungi Kami</h3><p class="foot-sub">Ada pertanyaan seputar les? Kami siap membantu.</p>
+      <div class="foot-btns">${s.wa_admin ? `<a class="sbtn wa" target="_blank" rel="noopener" href="${U.waLink(s.wa_admin, 'Assalamu\'alaikum, saya ingin bertanya tentang les baca & berhitung.')}">${icon('message-circle')}<span><small>WhatsApp</small>${esc(U.tampilWa(s.wa_admin))}</span></a>` : ''}
+        ${sos.map(([k, l, u]) => `<a class="sbtn ${k}" target="_blank" rel="noopener" href="${esc(/^https?:\/\//.test(u) ? u : 'https://' + u)}">${k === 'tiktok' ? ikonTiktok : icon(k)}<span><small>Ikuti kami</small>${l}</span></a>`).join('')}</div>
+      <div class="bottom">© ${new Date().getFullYear()} ${esc(s.nama_lembaga || s.nama_aplikasi || '')}</div></div></footer>`;
   }
-
   function landing() {
     document.body.classList.toggle('has-mbar', true);
     const urut = (D.sections || []).slice().sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0));
@@ -175,7 +175,7 @@
 
   function pasangLanding() {
     // Gambar yang gagal dimuat (link mati) tidak ditampilkan sebagai ikon rusak
-    $$('.hero-photo img').forEach((img) => img.addEventListener('error', () => { img.parentNode.innerHTML = ilustrasi(); }, { once: true }));
+    $$('.banner-media img').forEach((img) => img.addEventListener('error', () => { img.closest('.banner').classList.remove('ada-foto'); img.remove(); }, { once: true }));
     $$('#gal figure img').forEach((img) => img.addEventListener('error', () => { img.closest('figure').classList.add('hidden'); }, { once: true }));
     $$('[data-go]').forEach((a) => a.addEventListener('click', (e) => {
       e.preventDefault();

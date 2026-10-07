@@ -14,7 +14,9 @@
     if (!o) return 'Orang tua/wali ' + (s.nama || '');
     return /^(bapak|bpk|ibu|bu|pak|ayah|bunda|mama|papa|hj|h)\b\.?/i.test(o) ? o : 'Bapak/Ibu ' + o;
   };
-  const kota = (l) => (String(l.alamat || 'Sangatta').split(',')[0] || 'Sangatta').trim();
+  const kota = (l) => (l.kecamatan || 'Sangatta').trim();
+  const alamatKop = (l) => [l.nama_unit, U.alamatLengkap(l)].filter(Boolean).join(' • ');
+  const penandatangan = (d) => (d.lembaga && d.lembaga.kepala_unit) || d.penerima || 'Admin';
 
   K.html = (d) => {
     const l = d.lembaga || {};
@@ -22,7 +24,7 @@
     const ortu = penyetor(d.siswa);
     return `<div class="kw print-area">
       <div class="kw-head"><div class="lg">${U.logoHtml(l)}</div>
-        <div style="min-width:0"><b>${U.esc(l.nama_lembaga || l.nama_aplikasi || '')}</b><small>${U.esc([l.nama_unit, l.alamat].filter(Boolean).join(' • '))}</small></div></div>
+        <div style="min-width:0"><b>${U.esc(l.nama_lembaga || l.nama_aplikasi || '')}</b><small>${U.esc(alamatKop(l))}</small></div></div>
       <div class="kw-body">
         <div class="kw-title"><div><h3>KUITANSI PEMBAYARAN SPP</h3><div class="small muted mt-8">No. <b class="num" style="color:var(--p-700)">${U.esc(d.nomor || 'menunggu nomor…')}</b></div></div>
           <div class="stamp">LUNAS<small>${U.esc(U.tgl(d.tglBayar))}</small></div></div>
@@ -35,7 +37,7 @@
         <div class="kw-amt"><div class="tiny strong" style="letter-spacing:.06em;color:var(--p-700)">TOTAL PEMBAYARAN</div>
           <div class="v num">${U.rp(d.total)}</div><div class="tb">Terbilang: ${U.esc(U.terbilang(d.total))}</div></div>
         <div class="kw-perf"></div>
-        <div class="kw-sign"><div>${U.esc(kota(l))}, ${U.esc(U.tglPanjang(d.tglBayar))}<br>Penerima,<div class="sig">${U.esc((d.penerima || 'Admin').split(' ')[0])}</div><b>${U.esc(d.penerima || 'Admin')}</b></div>
+        <div class="kw-sign"><div>${U.esc(kota(l))}, ${U.esc(U.tglPanjang(d.tglBayar))}<br>Penerima,${l.ttd_data ? `<div class="sig-img"><img src="${l.ttd_data}" alt="Tanda tangan"></div>` : `<div class="sig">${U.esc(penandatangan(d).split(' ')[0])}</div>`}<b>${U.esc(penandatangan(d))}</b>${l.kepala_unit ? '<div class="tiny muted">Kepala Unit</div>' : ''}</div>
           <div class="tiny muted" style="text-align:right">${U.icon('shield-check', 'ic-sm')} Kuitansi digital resmi<br>${U.esc(l.nama_aplikasi || '')}</div></div>
       </div></div>`;
   };
@@ -64,7 +66,7 @@
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5);
     doc.text(String(l.nama_lembaga || l.nama_aplikasi || '').toUpperCase(), x0, 12.5, { maxWidth: W - x0 - M });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text([l.nama_unit, l.alamat].filter(Boolean).join(' • '), x0, 18.5, { maxWidth: W - x0 - M });
+    doc.text(alamatKop(l), x0, 18.5, { maxWidth: W - x0 - M });
     // Judul
     doc.setTextColor(43, 27, 61);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
@@ -105,8 +107,16 @@
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(43, 27, 61);
     doc.text(kota(l) + ', ' + U.tglPanjang(d.tglBayar), M, 102);
     doc.text('Penerima,', M, 108);
-    doc.setFont('helvetica', 'bold'); doc.text(d.penerima || 'Admin', M, 128);
+    if (l.ttd_data) {
+      try {
+        const im = await U.muatGambar(l.ttd_data);
+        const tinggi = 13, lebar = Math.min(46, tinggi * im.naturalWidth / im.naturalHeight);
+        doc.addImage(l.ttd_data, 'PNG', M, 109.5, lebar, lebar * im.naturalHeight / im.naturalWidth);
+      } catch (e) { /* tanpa gambar */ }
+    }
+    doc.setFont('helvetica', 'bold'); doc.text(penandatangan(d), M, 128);
     doc.setDrawColor(43, 27, 61); doc.setLineWidth(0.2); doc.line(M, 129.5, M + 50, 129.5);
+    if (l.kepala_unit) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(107, 95, 120); doc.text('Kepala Unit', M, 133.5); }
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(150, 140, 160);
     doc.text('Kuitansi digital resmi ' + (l.nama_aplikasi || '') + '  •  dicetak ' + U.tglPanjang(U.today()), M, H - 6);
     doc.save('Kuitansi_' + U.namaFile(d.siswa.nama) + '_' + U.namaFile((d.nomor || '').replace(/\//g, '-')) + '.pdf');

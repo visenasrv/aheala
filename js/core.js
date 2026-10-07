@@ -43,7 +43,9 @@
   U.addMonths = (ym, n) => { let y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); };
   U.daysInMonth = (ym) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).getUTCDate();
   U.isTgl = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
-  U.tgl = (s) => U.isTgl(s) ? (+s.slice(8, 10)) + ' ' + U.BLN[+s.slice(5, 7) - 1] + ' ' + s.slice(0, 4) : (s ? String(s) : '-');
+  // Format tanggal tampilan: dd-mm-yyyy
+  U.tgl = (s) => U.isTgl(s) ? s.slice(8, 10) + '-' + s.slice(5, 7) + '-' + s.slice(0, 4) : (s ? String(s) : '-');
+  U.dariTeksTgl = (t) => { const m = String(t || '').trim().match(/^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})$/); if (!m) return ''; const d = +m[1], b = +m[2], y = +m[3]; const dt = new Date(Date.UTC(y, b - 1, d)); return dt.getUTCFullYear() === y && dt.getUTCMonth() === b - 1 && dt.getUTCDate() === d ? y + '-' + String(b).padStart(2, '0') + '-' + String(d).padStart(2, '0') : ''; };
   U.tglPanjang = (s) => U.isTgl(s) ? (+s.slice(8, 10)) + ' ' + U.BULAN[+s.slice(5, 7) - 1] + ' ' + s.slice(0, 4) : '-';
   U.tglHari = (s) => U.isTgl(s) ? U.HARI[U.dow(s)] + ', ' + U.tglPanjang(s) : '-';
   U.bulan = (ym) => ym ? U.BULAN[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4) : '-';
@@ -185,6 +187,84 @@
   };
   U.ping = () => { if (U.siapApi()) fetch(U.gasUrl() + '?action=ping', { redirect: 'follow' }).catch(() => { }); };
 
+  // ---------------- Input tanggal dd-mm-yyyy ----------------
+  // Semua <input type="date"> otomatis diganti tampilan teks dd-mm-yyyy + tombol kalender.
+  // Input asli (format yyyy-mm-dd) tetap ada & tersembunyi, jadi kode lain tetap membaca .value seperti biasa.
+  const setVal = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  U.perkayaTgl = (root) => {
+    (root || document).querySelectorAll('input[type="date"]:not([data-tgl-ok])').forEach((asli) => {
+      asli.setAttribute('data-tgl-ok', '1');
+      const bungkus = document.createElement('div');
+      bungkus.className = 'date-in';
+      asli.parentNode.insertBefore(bungkus, asli);
+      const teks = document.createElement('input');
+      teks.type = 'text'; teks.className = asli.className || 'input'; teks.inputMode = 'numeric';
+      teks.placeholder = 'dd-mm-yyyy'; teks.maxLength = 10; teks.autocomplete = 'off';
+      teks.setAttribute('aria-label', (asli.getAttribute('aria-label') || asli.name || 'Tanggal') + ' (dd-mm-yyyy)');
+      if (asli.id) { teks.id = asli.id + '-teks'; const lb = document.querySelector('label[for="' + asli.id + '"]'); if (lb) lb.htmlFor = teks.id; }
+      if (asli.disabled) teks.disabled = true;
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'date-btn'; btn.tabIndex = -1; btn.setAttribute('aria-label', 'Buka kalender');
+      btn.innerHTML = U.icon('calendar');
+      bungkus.appendChild(teks); bungkus.appendChild(btn); bungkus.appendChild(asli);
+      asli.classList.add('date-native'); asli.tabIndex = -1;
+      const tampil = () => { const v = setVal.get.call(asli); teks.value = v ? U.tgl(v) : ''; };
+      Object.defineProperty(asli, 'value', { configurable: true, get() { return setVal.get.call(this); }, set(v) { setVal.set.call(this, v); tampil(); } });
+      tampil();
+      const kirim = () => { asli.dispatchEvent(new Event('input', { bubbles: true })); asli.dispatchEvent(new Event('change', { bubbles: true })); };
+      teks.addEventListener('input', () => {
+        // sisipkan tanda "-" otomatis saat mengetik angka
+        const raw = teks.value;
+        const dashOk = /^[\d-]*$/.test(raw) && raw.split('').every((ch, i) => ch !== '-' || i === 2 || i === 5);
+        if (dashOk) {
+          let v = raw.replace(/\D/g, '').slice(0, 8);
+          if (v.length > 4) v = v.slice(0, 2) + '-' + v.slice(2, 4) + '-' + v.slice(4); else if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2);
+          if (raw !== v && !(raw.endsWith('-') && raw.length === v.length + 1)) teks.value = v;
+        }
+        const iso = U.dariTeksTgl(teks.value);
+        teks.classList.toggle('invalid', !!teks.value && teks.value.length === 10 && !iso);
+        if (iso && iso !== setVal.get.call(asli)) { setVal.set.call(asli, iso); kirim(); }
+        else if (!teks.value && setVal.get.call(asli)) { setVal.set.call(asli, ''); kirim(); }
+      });
+      teks.addEventListener('blur', () => { if (teks.value && !U.dariTeksTgl(teks.value)) { teks.classList.add('invalid'); } else tampil(); });
+      asli.addEventListener('change', tampil);
+      btn.addEventListener('click', () => { try { asli.showPicker(); } catch (e) { teks.focus(); } });
+    });
+  };
+  if (window.MutationObserver) {
+    new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && (n.matches('input[type="date"]') || n.querySelector('input[type="date"]'))) { U.perkayaTgl(document); return; } })
+      .observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  // ---------------- Menu aksi (tombol ⋯ → daftar pilihan) ----------------
+  U.menu = (btn, items) => {
+    const lama = U._menu;
+    if (lama) { lama.tutup(); if (lama.btn === btn) return; }
+    const m = document.createElement('div');
+    m.className = 'popmenu'; m.setAttribute('role', 'menu');
+    m.innerHTML = items.map((it, i) => !it ? '' : it === '-' ? '<hr>' : `<button type="button" role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}">${U.icon(it.icon || 'chevron-right')}<span>${U.esc(it.label)}</span></button>`).join('');
+    document.body.appendChild(m);
+    const r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+    let top = r.bottom + 6; if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    m.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, r.right - w)) + 'px';
+    m.style.top = top + 'px';
+    btn.setAttribute('aria-expanded', 'true');
+    const luar = (e) => { if (!m.contains(e.target) && !btn.contains(e.target)) tutup(); };
+    const kunci = (e) => { if (e.key === 'Escape') { tutup(); btn.focus(); } };
+    function tutup() {
+      m.remove(); btn.setAttribute('aria-expanded', 'false'); U._menu = null;
+      document.removeEventListener('pointerdown', luar, true); document.removeEventListener('keydown', kunci);
+      window.removeEventListener('scroll', tutup, true); window.removeEventListener('resize', tutup);
+    }
+    U._menu = { btn, tutup };
+    setTimeout(() => {
+      document.addEventListener('pointerdown', luar, true); document.addEventListener('keydown', kunci);
+      window.addEventListener('scroll', tutup, true); window.addEventListener('resize', tutup);
+    }, 0);
+    m.addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (!b) return; tutup(); items[+b.dataset.i].onClick(); });
+    const pertama = m.querySelector('button'); if (pertama) pertama.focus({ preventScroll: true });
+  };
+
   // ---------------- Toast ----------------
   U.toast = (msg, type, ms) => {
     let box = document.getElementById('toasts');
@@ -266,6 +346,34 @@
     ctx.drawImage(img, 0, 0, c.width, c.height);
     const dataUrl = c.toDataURL(mime || 'image/jpeg', mutu || 0.85);
     return { dataUrl, base64: dataUrl.split(',')[1], mime: mime || 'image/jpeg', w: c.width, h: c.height };
+  };
+  // Alamat lengkap lembaga dari pengaturan identitas
+  U.alamatLengkap = (l) => { l = l || {}; return [l.alamat, l.desa, l.kecamatan ? 'Kec. ' + l.kecamatan : ''].map((x) => String(x || '').trim()).filter(Boolean).join(', '); };
+  // Olah gambar tanda tangan: latar putih/terang → transparan, potong tepi kosong, kecilkan (PNG ≤ ±33 KB)
+  U.olahTtd = async (file) => {
+    const img = await U.muatGambar(await U.bacaFile(file));
+    const sk = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * sk); c.height = Math.round(img.naturalHeight * sk);
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+    const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+    let minX = c.width, minY = c.height, maxX = -1, maxY = -1;
+    for (let i = 0; i < p.length; i += 4) {
+      const lum = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+      if (lum > 215) p[i + 3] = 0; // latar kertas
+      else if (lum > 170) p[i + 3] = Math.round(p[i + 3] * (215 - lum) / 45); // tepi halus
+      if (p[i + 3] > 24) { const k = i / 4, px = k % c.width, py = (k - px) / c.width; if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py; }
+    }
+    if (maxX < 0) throw new Error('Tanda tangan tidak terdeteksi. Gunakan gambar tinta gelap di atas latar putih/transparan.');
+    x.putImageData(d, 0, 0);
+    const pad = 6, w = maxX - minX + 1 + pad * 2, h = maxY - minY + 1 + pad * 2;
+    for (const lebar of [420, 340, 280, 220, 170]) {
+      const s2 = Math.min(1, lebar / w);
+      const o = document.createElement('canvas'); o.width = Math.max(1, Math.round(w * s2)); o.height = Math.max(1, Math.round(h * s2));
+      o.getContext('2d').drawImage(c, minX - pad, minY - pad, w, h, 0, 0, o.width, o.height);
+      const url = o.toDataURL('image/png');
+      if (url.length <= 45000) return url;
+    }
+    throw new Error('Gambar tanda tangan terlalu rumit. Coba foto/scan yang lebih bersih.');
   };
   U.pilihFile = (accept) => new Promise((res) => {
     const i = document.createElement('input'); i.type = 'file'; i.accept = accept || 'image/*';

@@ -31,24 +31,27 @@
           <div class="card stat"><div class="top"><span class="lbl">Belum punya sandi</span><span class="icon-dot sm bad">${icon('key-round')}</span></div><div class="val">${aktif.filter((g) => !g.punyaSandi).length}</div><div class="sub">tidak bisa login absen</div></div></div>
         <div class="row-gap mb-12"><div class="tabs"><button class="tab ${ui.tab === 'aktif' ? 'on' : ''}" data-tab="aktif">Aktif <span class="n">${aktif.length}</span></button><button class="tab ${ui.tab === 'berhenti' ? 'on' : ''}" data-tab="berhenti">Berhenti <span class="n">${berhenti.length}</span></button></div>
           <div class="input-icon spacer" style="min-width:220px">${icon('search')}<input class="input" id="g-q" placeholder="Cari nama guru…" value="${esc(ui.q)}" style="min-height:42px"></div></div>
-        <div class="card">${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th>Guru</th><th>Tempat, tgl lahir</th><th>Tgl masuk</th><th>Masa mengajar</th><th>Hari mengajar ${U.bln(ym)}</th><th>Akses</th><th class="t-right">Aksi</th></tr></thead><tbody>
+        <div class="card">${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th>Guru</th><th>Tempat, tgl lahir</th><th>Masa mengajar</th><th>Mengajar ${U.bln(ym)}</th><th>Akses</th><th class="t-right" style="width:96px">Aksi</th></tr></thead><tbody>
           ${rows.map((g) => `<tr><td class="t-main"><div class="person">${U.avatar(g.nama, g.id, '', A.foto['g_' + g.id])}<div><div class="t-name">${esc(g.nama)}</div><div class="t-sub">${esc(g.panggilan || '')}${g.wa ? ' · ' + esc(U.tampilWa(g.wa)) : ''}</div></div></div></td>
             <td data-l="Lahir">${esc([g.tempatLahir, U.tgl(g.tglLahir)].filter((x) => x && x !== '-').join(', ') || '-')}${g.tglLahir ? `<div class="t-sub">${U.umur(g.tglLahir)}</div>` : ''}</td>
-            <td data-l="Masuk" class="nowrap">${esc(U.tgl(g.tglMasuk))}${g.tglKeluar ? `<div class="t-sub">Keluar ${esc(U.tgl(g.tglKeluar))}</div>` : ''}</td>
-            <td data-l="Masa mengajar"><span class="chip chip-ahe">${esc(U.masa(g.tglMasuk, g.tglKeluar || null))}</span></td>
+            <td data-l="Masa mengajar"><span class="chip chip-ahe">${esc(U.masa(g.tglMasuk, g.tglKeluar || null))}</span><div class="t-sub">Masuk ${esc(U.tgl(g.tglMasuk))}${g.tglKeluar ? ' · keluar ' + esc(U.tgl(g.tglKeluar)) : ''}</div></td>
             <td data-l="Hari mengajar"><b>${hari[g.id] || 0}</b> hari</td>
             <td data-l="Akses">${guruAktif(g) ? (g.punyaSandi ? `<span class="chip chip-ok">${icon('check')} Bisa login</span>` : `<span class="chip chip-bad">${icon('lock')} Belum ada sandi</span>`) : '<span class="chip">Nonaktif</span>'}</td>
-            <td class="t-actions t-right"><div class="row-gap" style="justify-content:flex-end"><button class="btn btn-light btn-sm" data-edit="${g.id}">${icon('pencil')} Edit</button>
-              ${guruAktif(g) ? `<button class="btn btn-light btn-sm" data-reset="${g.id}">${icon('key-round')} ${g.punyaSandi ? 'Reset' : 'Buat'} Sandi</button>` : ''}
-              <button class="btn btn-danger-ghost btn-icon btn-sm" data-hapus="${g.id}" title="Hapus">${icon('trash-2')}</button></div></td></tr>`).join('')}
+            <td class="t-actions t-right"><button class="btn btn-light btn-sm" data-aksi="${g.id}" aria-haspopup="menu" aria-expanded="false">${icon('ellipsis')} Aksi</button></td></tr>`).join('')}
           </tbody></table></div>` : A.kosong('users', ui.tab === 'aktif' ? 'Belum ada guru aktif' : 'Tidak ada guru berhenti', ui.tab === 'aktif' ? 'Tambahkan guru beserta kata sandinya agar bisa login untuk absen.' : '', ui.tab === 'aktif' ? '<button class="btn btn-primary" data-tambah2>' + icon('user-plus') + ' Tambah guru</button>' : '')}</div>`;
       $$('[data-tab]').forEach((b) => b.onclick = () => { ui.tab = b.dataset.tab; A.render(); });
       $('#g-q').oninput = U.debounce((e) => { ui.q = e.target.value; A.refresh(true); const i = $('#g-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
       $('#g-tambah').onclick = () => formGuru(null);
       const t2 = $('[data-tambah2]'); if (t2) t2.onclick = () => formGuru(null);
-      $$('[data-edit]').forEach((b) => b.onclick = () => formGuru(R.idx().guru[b.dataset.edit]));
-      $$('[data-reset]').forEach((b) => b.onclick = () => resetSandi(R.idx().guru[b.dataset.reset]));
-      $$('[data-hapus]').forEach((b) => b.onclick = () => hapusGuru(R.idx().guru[b.dataset.hapus]));
+      $$('[data-aksi]').forEach((b) => b.onclick = () => {
+        const g = R.idx().guru[b.dataset.aksi]; if (!g) return;
+        U.menu(b, [
+          { icon: 'pencil', label: 'Edit data guru', onClick: () => formGuru(g) },
+          guruAktif(g) ? { icon: 'key-round', label: (g.punyaSandi ? 'Reset' : 'Buat') + ' kata sandi', onClick: () => resetSandi(g) } : null,
+          '-',
+          { icon: 'trash-2', label: 'Hapus guru', danger: true, onClick: () => hapusGuru(g) }
+        ]);
+      });
     }
   });
   function sandiAcak() { const h = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const a = new Uint8Array(8); crypto.getRandomValues(a); return Array.from(a, (b) => h[b % h.length]).join('').replace(/^(.{4})/, '$1-'); }
@@ -232,9 +235,9 @@
         <select class="input" id="h-bulan" style="min-width:200px">${bulanRentang(ui).map((b) => `<option value="${b}" ${b === ym ? 'selected' : ''}>Tampil: ${U.bulan(b)}</option>`).join('')}</select>
         <label class="switch"><input type="checkbox" id="h-absen" ${ui.absen ? 'checked' : ''}><span class="track"></span><span class="small strong">Absen &gt; 2 minggu</span></label>
         <span class="spacer"></span><div class="legend"><span><span class="ck" style="display:inline-grid;width:16px;height:16px;border-radius:50%;background:var(--ok);vertical-align:-3px;margin-right:6px"></span>Hadir</span><span><i style="background:var(--line-2);border-radius:50%"></i>Tidak hadir</span><span><b class="muted">L</b> Libur</span></div></div></div>
-      <div class="card">${M.siswa.length ? `<div class="tbl-wrap"><table class="tbl matrix"><thead><tr><th>Nama siswa & program</th>${M.hari.map((t) => `<th class="${R.libur(t) ? 'L' : ''}">${U.HR[U.dow(t)]}<br>${+t.slice(8)}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>
-        ${M.siswa.map((s) => { const p = R.prog(s.id); const h = M.hadir[s.id] || {}; const n = Object.keys(h).length; const pct = M.hariLes.length ? Math.round(n / M.hariLes.length * 100) : 0; return `<tr class="${M.absen[s.id] ? 'row-bad' : ''}"><td><div class="t-name">${esc(s.nama)}</div><div class="t-sub">${p ? `<span class="chip chip-sm ${p.program === 'ala' ? 'chip-ala' : 'chip-ahe'}">${p.program === 'ala' ? 'ALA' : 'AHE'} · LV ${esc(p.level)}</span>` : ''} ${M.absen[s.id] ? `<span class="chip chip-bad chip-sm">${icon('triangle-alert')} Absen ${M.absen[s.id]} hari</span>` : ''}</div></td>
-          ${M.hari.map((t) => R.libur(t) ? '<td class="L"><span class="lb">L</span></td>' : h[t] ? `<td><span class="ck">${icon('check')}</span></td>` : !M.hariLes.includes(t) ? '<td></td>' : '<td><span class="no"></span></td>').join('')}
+      <div class="card">${M.siswa.length ? `<div class="tbl-wrap"><table class="tbl matrix"><thead><tr><th class="mx-nama">Nama siswa & program</th>${M.hari.map((t) => `<th class="dc ${R.libur(t) ? 'L' : ''}" title="${esc(U.tglHari(t))}"><span class="hr">${U.HR[U.dow(t)]}</span>${+t.slice(8)}</th>`).join('')}<th class="mx-tot">Total</th><th class="mx-pct">%</th></tr></thead><tbody>
+        ${M.siswa.map((s) => { const p = R.prog(s.id); const h = M.hadir[s.id] || {}; const n = Object.keys(h).length; const pct = M.hariLes.length ? Math.round(n / M.hariLes.length * 100) : 0; return `<tr class="${M.absen[s.id] ? 'row-bad' : ''}"><td><div class="t-name">${esc(s.nama)}</div><div class="t-sub">${p ? `<span class="chip chip-sm ${p.program === 'ala' ? 'chip-ala' : 'chip-ahe'}">${p.program === 'ala' ? 'ALA' : 'AHE'} · LV ${esc(p.level)}</span>` : ''} ${M.absen[s.id] ? `<span class="chip chip-bad chip-sm">${icon('triangle-alert')} Absen ${M.absen[s.id]} hari</span>` : ''}</div><div class="mx-strip">${M.hari.map((t) => `<i class="${R.libur(t) ? 'l' : h[t] ? 'h' : M.hariLes.includes(t) ? 'x' : 'n'}" title="${+t.slice(8)} ${esc(U.bln(ym))}${h[t] ? ' · hadir' : ''}"></i>`).join('')}</div></td>
+          ${M.hari.map((t) => R.libur(t) ? '<td class="dc L"><span class="lb">L</span></td>' : h[t] ? `<td class="dc"><span class="ck">${icon('check')}</span></td>` : !M.hariLes.includes(t) ? '<td class="dc"></td>' : '<td class="dc"><span class="no"></span></td>').join('')}
           <td><b>${n}</b>/${M.hariLes.length}</td><td><b style="color:${pct >= 75 ? 'var(--ok-700)' : pct >= 50 ? 'var(--warn-700)' : 'var(--bad-700)'}">${pct}%</b></td></tr>`; }).join('')}
       </tbody></table></div>` : A.kosong('graduation-cap', 'Tidak ada siswa untuk ditampilkan', 'Ubah filter atau bulan.')}</div>
       <div class="note-box mt-16">${icon('info')}<span>Sabtu, Minggu, dan hari libur khusus tidak dihitung sebagai hari les. Siswa tidak hadir ≥ ${+D().settings.ambang_absen_hari || 10} hari les berturut-turut ditandai merah dan admin menerima WA.</span></div>`;
@@ -264,9 +267,15 @@
       const siswa = R.siswaTerdaftar().filter((s) => { const p = R.prog(s.id); return pemilik[s.id] || (p && (p.status === 'aktif')); }).sort((a, b) => a.nama.localeCompare(b.nama));
       const box = $('#k-list'); if (!box) return;
       const gambar = () => {
-        box.innerHTML = `<div class="slist">${siswa.map((s) => { const p = R.prog(s.id); const lain = pemilik[s.id] && pemilik[s.id] !== ui.kGuru; return `<div class="sitem ${sel.has(s.id) ? 'on' : ''} ${lain ? 'lock' : ''}" data-s="${s.id}">${A.cek('', sel.has(s.id), lain)}${U.avatar(s.nama, s.id)}<div class="meta"><div class="nm">${esc(s.nama)}</div>${lain ? `<div class="note">${icon('lock', 'ic-sm')} Dicatat oleh ${esc(namaGuru(pemilik[s.id]))}</div>` : ''}</div>${p ? A.chipProg(p, true) : ''}</div>`; }).join('')}</div>
+        box.innerHTML = `<div class="slist">${siswa.map((s) => { const p = R.prog(s.id); const lain = pemilik[s.id] && pemilik[s.id] !== ui.kGuru; return `<div class="sitem ${sel.has(s.id) ? 'on' : ''} ${lain ? 'lock' : ''}" data-s="${s.id}">${A.cekVis(sel.has(s.id), lain)}${U.avatar(s.nama, s.id)}<div class="meta"><div class="nm">${esc(s.nama)}</div>${lain ? `<div class="note">${icon('lock', 'ic-sm')} Dicatat oleh ${esc(namaGuru(pemilik[s.id]))}</div>` : ''}</div>${p ? A.chipProg(p, true) : ''}</div>`; }).join('')}</div>
           <div class="sticky-act"><button class="btn btn-primary btn-lg btn-block" id="k-simpan">${icon('save')} Simpan koreksi (${sel.size} siswa) · ${esc(namaGuru(ui.kGuru))} · ${esc(U.tgl(ui.kTgl))}</button></div>`;
-        $$('[data-s]', box).forEach((it) => it.onclick = (e) => { e.preventDefault(); if (it.classList.contains('lock')) return; const id = it.dataset.s; sel.has(id) ? sel.delete(id) : sel.add(id); gambar(); });
+        const tbl = $('#k-simpan');
+        const label = () => { tbl.innerHTML = `${icon('save')} Simpan koreksi (${sel.size} siswa) · ${esc(namaGuru(ui.kGuru))} · ${esc(U.tgl(ui.kTgl))}`; };
+        $$('[data-s]', box).forEach((it) => it.onclick = (e) => {
+          e.preventDefault(); if (it.classList.contains('lock')) return;
+          const id = it.dataset.s; sel.has(id) ? sel.delete(id) : sel.add(id);
+          const on = sel.has(id); it.classList.toggle('on', on); $('input', it).checked = on; label();
+        });
         $('#k-simpan').onclick = () => {
           const pilih = Array.from(sel);
           const g = R.idx().guru[ui.kGuru];
@@ -304,7 +313,7 @@
       } else if (tab === 'khusus') {
         const rows = data.hadirGuru.filter((h) => +h.jumlahSiswa > ambang).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
         lembar = [{ nama: 'Guru lebih ' + ambang, judul: 'Rekap Guru Mengajar Lebih dari ' + ambang + ' Siswa — ' + judulRentang, head: ['No', 'Tanggal', 'Hari', 'Nama Guru', 'Jumlah Siswa'],
-          body: rows.map((h, i) => [i + 1, U.tglPanjang(h.tanggal), U.HARI[U.dow(h.tanggal)], namaGuru(h.guruId, h.namaGuru), +h.jumlahSiswa]) }];
+          body: rows.map((h, i) => [i + 1, U.tgl(h.tanggal), U.HARI[U.dow(h.tanggal)], namaGuru(h.guruId, h.namaGuru), +h.jumlahSiswa]) }];
       } else {
         lembar = bulanRentang(ui).map((b) => {
           const M = matriksSiswa(data, b, Object.assign({}, ui, { q: '', absen: false }));
@@ -395,14 +404,12 @@
           <select class="input" id="s-prog"><option value="">Semua program</option><option value="ahe" ${ui.prog === 'ahe' ? 'selected' : ''}>Baca (Ahe)</option><option value="ala" ${ui.prog === 'ala' ? 'selected' : ''}>Berhitung (Ala)</option></select>
           <select class="input" id="s-st"><option value="">Semua status</option><option value="lunas" ${ui.st === 'lunas' ? 'selected' : ''}>Lunas</option><option value="belum" ${ui.st === 'belum' ? 'selected' : ''}>Belum bayar</option></select>
           <button class="tab ${ui.tunggak ? 'on' : ''}" id="s-tg" style="border-color:var(--bad);${ui.tunggak ? 'background:var(--bad)' : 'color:var(--bad-700)'}">${icon('triangle-alert', 'ic-sm')} Menunggak ≥ 2 bulan <span class="n">${dua.size}</span></button></div></div>
-        <div class="card">${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th class="w-check">${A.cek('data-all', ui.sel.size && halRows.filter((r) => !r.l).every((r) => ui.sel.has(r.s.id)))}</th><th>Siswa</th><th>Program</th><th>Status</th><th>Tgl bayar</th><th>Kuitansi</th><th>Tunggakan</th><th class="t-right">Aksi</th></tr></thead><tbody>
+        <div class="card">${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th class="w-check">${A.cek('data-all', ui.sel.size && halRows.filter((r) => !r.l).every((r) => ui.sel.has(r.s.id)))}</th><th>Siswa</th><th>Program</th><th>Status</th><th>Tunggakan</th><th class="t-right">Aksi</th></tr></thead><tbody>
           ${halRows.map(({ s, p, l, tg }) => { const kw = l && R.idx().kw[l.kuitansiId]; return `<tr class="${ui.sel.has(s.id) ? 'sel' : ''} ${dua.has(s.id) && !l ? 'row-bad' : ''}">
             <td class="w-check">${l ? '' : A.cek(`data-sel="${s.id}"`, ui.sel.has(s.id))}</td>
             <td class="t-main"><div class="person">${U.avatar(s.nama, s.id)}<div><a class="t-name" href="#/siswa/${s.id}">${esc(s.nama)}</a> ${s.panggilan ? `<span class="small muted">(${esc(s.panggilan)})</span>` : ''}<div class="t-sub">${esc(s.kode)}${s.ortu ? ' · Ortu: ' + esc(s.ortu) : ''}</div></div></div></td>
             <td data-l="Program">${A.chipProg(p, true)}</td>
-            <td data-l="Status">${l ? `<span class="chip chip-ok">${icon('check')} Lunas</span>` : `<span class="chip chip-bad">${icon('circle-alert')} Belum bayar</span>`}</td>
-            <td data-l="Dibayar" class="nowrap">${l ? esc(U.tgl(l.tglBayar)) : '—'}</td>
-            <td data-l="Kuitansi">${kw ? `<button class="btn btn-ghost btn-sm" data-kw="${kw.id}" style="padding:0 6px">${icon('receipt')} <span class="num">${esc(kw.nomor || 'menunggu…')}</span></button>` : '—'}</td>
+            <td data-l="Status">${l ? `<span class="chip chip-ok">${icon('check')} Lunas</span><div class="t-sub nowrap">${esc(U.tgl(l.tglBayar))}${kw ? ' · <span class="num">' + esc(kw.nomor || 'menunggu…') + '</span>' : ''}</div>` : `<span class="chip chip-bad">${icon('circle-alert')} Belum bayar</span>`}</td>
             <td data-l="Tunggakan">${tg.belum.length ? `<span class="chip ${tg.dua ? 'chip-bad' : 'chip-warn'}">${tg.belum.length} bln: ${esc(tg.belum.map(U.bln).join(', '))}</span>` : '<span class="chip">Lancar</span>'}</td>
             <td class="t-actions t-right"><div class="row-gap" style="justify-content:flex-end">${l ? (kw ? `<button class="btn btn-light btn-sm" data-kw="${kw.id}">${icon('printer')} Kuitansi</button>` : '') + `<button class="btn btn-ghost btn-icon btn-sm" data-batal="${s.id}" title="Batalkan lunas">${icon('undo-2')}</button>`
               : `<button class="btn btn-accent btn-sm" data-bayar="${s.id}">${icon('wallet')} Tandai Lunas</button>${tg.belum.length && s.wa ? `<button class="btn btn-wa btn-icon btn-sm" data-ingat="${s.id}" title="Kirim pengingat WA">${icon('message-circle')}</button>` : ''}`}</div></td></tr>`; }).join('')}
@@ -549,7 +556,7 @@
     const set = D().settings;
     return { nomor: k.nomor, bulan: String(k.bulan).split(',').filter(Boolean), total: k.total, tglBayar: k.tglBayar, metode: k.metode, penerima: k.penerima || set.kuitansi_penerima,
       siswa: { nama: s.nama || '-', panggilan: s.panggilan, kode: s.kode, ortu: s.ortu }, program: p ? { program: p.program, level: p.level } : null,
-      lembaga: { nama_aplikasi: set.nama_aplikasi, nama_lembaga: set.nama_lembaga, nama_unit: set.nama_unit, logo_data: set.logo_data, warna_utama: set.warna_utama, alamat: set.alamat, wa_admin: set.wa_admin } };
+      lembaga: { nama_aplikasi: set.nama_aplikasi, nama_lembaga: set.nama_lembaga, nama_unit: set.nama_unit, logo_data: set.logo_data, warna_utama: set.warna_utama, alamat: set.alamat, wa_admin: set.wa_admin, kecamatan: set.kecamatan, desa: set.desa, kepala_unit: set.kepala_unit, ttd_data: set.ttd_data } };
   };
   A.lihatKuitansi = (k) => {
     if (!k) return;

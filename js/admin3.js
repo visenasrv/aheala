@@ -114,8 +114,8 @@
   // ======================================================================
   // KELOLA LANDING PAGE (simpan otomatis + pratinjau langsung)
   // ======================================================================
-  const NAMA_SEKSI = { hero: 'Hero & Slogan Utama', metode: 'Metode Pembelajaran', program: 'Program & Level', pengumuman: 'Pengumuman Libur', galeri: 'Galeri Foto Kegiatan', video: 'Video Kegiatan', lokasi: 'Lokasi & Peta', kontak: 'Kontak & Footer' };
-  const DESK_SEKSI = { hero: 'Judul, slogan, poin unggulan, foto sampul', metode: 'Kartu keunggulan metode belajar', program: 'Penjelasan program Baca & Berhitung', pengumuman: 'Otomatis dari menu Hari Libur', galeri: 'Foto dari HP atau link', video: 'Link YouTube / Facebook', lokasi: 'Alamat, jam les, peta Google Maps', kontak: 'Media sosial & teks tentang lembaga' };
+  const NAMA_SEKSI = { hero: 'Banner Utama', metode: 'Metode Pembelajaran', program: 'Program & Level', pengumuman: 'Pengumuman Libur', galeri: 'Galeri Foto Kegiatan', video: 'Video Kegiatan', lokasi: 'Lokasi & Peta', kontak: 'Footer Kontak' };
+  const DESK_SEKSI = { hero: 'Foto banner, judul, slogan, poin unggulan', metode: 'Kartu keunggulan metode belajar', program: 'Penjelasan program Baca & Berhitung', pengumuman: 'Otomatis dari menu Hari Libur', galeri: 'Foto dari HP atau link', video: 'Link YouTube / Facebook', lokasi: 'Alamat, jam les, peta Google Maps', kontak: 'Tombol WhatsApp & media sosial' };
   const IKON_METODE = ['book-open', 'calculator', 'heart', 'smile', 'star', 'puzzle', 'users', 'award', 'school', 'sparkles'];
   const isiSeksi = (s) => { try { return typeof s.isi === 'string' ? JSON.parse(s.isi || '{}') : (s.isi || {}); } catch (e) { return {}; } };
   let frameSiap = false;
@@ -191,10 +191,11 @@
       el.innerHTML = `<div class="form-stack">${umum.replace('Judul bagian', 'Judul utama (H1)')}
         <div class="field"><label>Lencana di atas judul</label><input class="input" data-x="badge" value="${esc(x.badge || '')}"></div>
         <div class="field"><label>Poin unggulan (satu per baris)</label><textarea class="input" data-x="poin" data-lines="1" rows="3">${esc((x.poin || []).join('\n'))}</textarea></div>
-        <div class="field"><label>Foto sampul</label><div class="row-gap">${x.fotoUrl ? `<img src="${esc(x.fotoUrl)}" alt="" referrerpolicy="no-referrer" style="width:120px;aspect-ratio:5/4;object-fit:cover;border-radius:12px">` : '<span class="small muted">Belum ada (memakai foto galeri pertama / ilustrasi)</span>'}</div>
+        <div class="field"><label>Foto banner (sampul)</label><div class="row-gap">${x.fotoUrl ? `<img src="${esc(x.fotoUrl)}" alt="" referrerpolicy="no-referrer" style="width:100%;max-width:360px;aspect-ratio:12/5;object-fit:cover;border-radius:12px">` : '<span class="small muted">Belum ada (memakai foto galeri pertama, atau latar warna utama)</span>'}</div>
+          <span class="help">${icon('info', 'ic-sm')} Pakai foto <b>mendatar (landscape)</b>, idealnya 1920×800 px. Banner memenuhi lebar layar laptop & HP; bagian tengah foto selalu terlihat.</span>
           <div class="row-gap mt-8"><button class="btn btn-soft btn-sm" data-up-hero>${icon('upload')} Unggah dari HP/Komputer</button><button class="btn btn-light btn-sm" data-link-hero>${icon('link')} Pakai link</button>${x.fotoUrl ? `<button class="btn btn-danger-ghost btn-sm" data-hapus-hero>${icon('trash-2')} Hapus</button>` : ''}</div></div></div>`;
       bind();
-      $('[data-up-hero]', el).onclick = async () => { const r = await unggahFoto(); if (r) { ubahSeksi('hero', (z) => { const o = isiSeksi(z); o.fotoUrl = r.url; z.isi = JSON.stringify(o); }); A.render(); } };
+      $('[data-up-hero]', el).onclick = async () => { const r = await unggahFoto(false, 2000); if (r) { ubahSeksi('hero', (z) => { const o = isiSeksi(z); o.fotoUrl = r.url; z.isi = JSON.stringify(o); }); A.render(); } };
       $('[data-link-hero]', el).onclick = async () => { const u = await U.prompt({ title: 'Link foto sampul', label: 'Alamat gambar (https://…)', icon: 'link', ok: 'Pakai' }); if (u && /^https?:\/\//.test(u)) { ubahSeksi('hero', (z) => { const o = isiSeksi(z); o.fotoUrl = u.trim(); z.isi = JSON.stringify(o); }); A.render(); } };
       const h = $('[data-hapus-hero]', el); if (h) h.onclick = () => { ubahSeksi('hero', (z) => { const o = isiSeksi(z); o.fotoUrl = ''; z.isi = JSON.stringify(o); }); A.render(); };
     } else if (s.id === 'metode') {
@@ -250,22 +251,39 @@
         A.kirim({ op: 'deleteGaleri', id: b.dataset.delG, _label: 'Hapus galeri' }); kirimPratinjau();
       });
     } else if (s.id === 'lokasi') {
-      el.innerHTML = `<div class="form-stack">${umum}<div class="field"><label>Alamat lengkap</label><textarea class="input" data-x="alamat" rows="2">${esc(x.alamat || '')}</textarea></div>
+      const set = D().settings;
+      const titik = x.mapsLat && x.mapsLng;
+      el.innerHTML = `<div class="form-stack">${umum}<div class="field"><label>Alamat lengkap</label><textarea class="input" data-x="alamat" rows="2" placeholder="${esc(U.alamatLengkap(set) || 'Kosongkan untuk memakai alamat di Pengaturan → Identitas')}">${esc(x.alamat || '')}</textarea><span class="help">Kosongkan untuk memakai alamat dari Pengaturan → Identitas.</span></div>
         <div class="field"><label>Jam les</label><input class="input" data-x="jam" value="${esc(x.jam || '')}"></div>
-        <div class="field"><label>Pencarian peta (nama tempat / alamat / koordinat)</label><input class="input" data-x="mapsQuery" value="${esc(x.mapsQuery || '')}" placeholder="-0.5052, 117.5502 atau nama tempat"><span class="help">Dipakai untuk peta Google Maps yang tertanam.</span></div>
-        <div class="field"><label>Link Google Maps (opsional)</label><input class="input" data-x="mapsLink" value="${esc(x.mapsLink || '')}" placeholder="https://maps.app.goo.gl/…"></div></div>`;
+        <div class="field"><label>Link Google Maps</label><div class="row-gap"><input class="input" id="lk-maps" value="${esc(x.mapsLink || '')}" placeholder="Tempel link: https://maps.app.goo.gl/…" style="flex:1"><button class="btn btn-primary" id="lk-pakai">${icon('map-pin')} Pasang</button></div>
+          <span class="help">Di aplikasi Google Maps: buka lokasi les → <b>Bagikan</b> → <b>Salin link</b>, lalu tempel di sini. Titik merah otomatis muncul di peta landing page.</span>
+          <div id="lk-st" class="mt-8">${titik ? `<div class="note-box ok">${icon('circle-check')}<span>Titik peta terpasang: <b class="num">${esc(x.mapsLat)}, ${esc(x.mapsLng)}</b>${x.mapsNama ? ' · ' + esc(x.mapsNama) : ''}</span></div>` : ''}</div></div>
+        ${titik ? `<div class="map" style="min-height:220px"><iframe loading="lazy" title="Pratinjau peta" style="min-height:220px" src="https://maps.google.com/maps?q=${encodeURIComponent(x.mapsLat + ',' + x.mapsLng)}&z=17&hl=id&output=embed"></iframe></div>` : ''}
+        <details${titik ? '' : ' open'}><summary class="small strong" style="cursor:pointer">Cara lain: cari dengan nama tempat / koordinat</summary>
+          <div class="field mt-8"><input class="input" data-x="mapsQuery" value="${esc(x.mapsQuery || '')}" placeholder="-0.5052, 117.5502 atau nama tempat"><span class="help">Dipakai bila link Google Maps belum dipasang.</span></div></details></div>`;
       bind();
+      $('#lk-pakai', el).onclick = async (e) => {
+        const b = e.currentTarget, url = $('#lk-maps', el).value.trim();
+        if (!url) { ubahSeksi('lokasi', (z) => { const o = isiSeksi(z); delete o.mapsLat; delete o.mapsLng; delete o.mapsNama; o.mapsLink = ''; z.isi = JSON.stringify(o); }); A.render(); return; }
+        const asli = b.innerHTML; b.disabled = true; b.innerHTML = `${icon('loader-circle', 'spin')} Membaca…`;
+        try {
+          const r = await U.api('petaDariLink', { token: A.S.token, url });
+          ubahSeksi('lokasi', (z) => { const o = isiSeksi(z); o.mapsLink = url; o.mapsLat = String(r.lat); o.mapsLng = String(r.lng); o.mapsNama = r.nama || ''; z.isi = JSON.stringify(o); });
+          U.toast('Titik lokasi terpasang di peta'); A.render();
+        } catch (er) { $('#lk-st', el).innerHTML = `<div class="note-box bad">${icon('triangle-alert')}<span>${esc(er.message)}</span></div>`; b.disabled = false; b.innerHTML = asli; }
+      };
     } else if (s.id === 'kontak') {
-      el.innerHTML = `<div class="form-stack"><div class="field"><label>Tentang lembaga (footer)</label><textarea class="input" data-x="tentang" rows="3">${esc(x.tentang || '')}</textarea></div>
+      el.innerHTML = `<div class="form-stack"><p class="help">${icon('info', 'ic-sm')} Footer berisi tombol WhatsApp dan tombol media sosial. Kosongkan link yang tidak dipakai.</p>
         <div class="field"><label>Link Facebook</label><input class="input" data-x="facebook" value="${esc(x.facebook || '')}" placeholder="https://facebook.com/…"></div>
         <div class="field"><label>Link Instagram</label><input class="input" data-x="instagram" value="${esc(x.instagram || '')}"></div>
         <div class="field"><label>Link YouTube</label><input class="input" data-x="youtube" value="${esc(x.youtube || '')}"></div>
+        <div class="field"><label>Link TikTok</label><input class="input" data-x="tiktok" value="${esc(x.tiktok || '')}" placeholder="https://tiktok.com/@…"></div>
         <p class="help">${icon('info', 'ic-sm')} Nomor WhatsApp kontak diambil dari Pengaturan → WhatsApp.</p></div>`;
       bind();
     }
   }
   // Unggah foto ke Drive (dikompres di perangkat)
-  async function unggahFoto(banyak) {
+  async function unggahFoto(banyak, maks) {
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = !!banyak;
     const files = await new Promise((res) => { inp.onchange = () => res(Array.from(inp.files || [])); inp.click(); });
     if (!files.length) return null;
@@ -275,7 +293,7 @@
       if (f.size > 15 * 1024 * 1024) { U.toast(f.name + ' terlalu besar', 'warn'); continue; }
       U.toast(`Mengunggah foto ${i + 1}/${files.length}…`, 'info', 2500);
       try {
-        const k = await U.kompres(f, 1600, 0.85);
+        const k = await U.kompres(f, maks || 1600, 0.85);
         const r = await U.api('uploadFile', { token: A.S.token, tujuan: 'galeri', mime: k.mime, base64: k.base64, name: f.name.replace(/\.[^.]+$/, '') + '.jpg' }, { timeout: 150000 });
         if (!r.publik) U.toast('Foto tersimpan, tetapi berbagi publik diblokir akun Google ini — foto mungkin tidak tampil.', 'warn', 7000);
         hasil.push({ url: r.url, fileId: r.fileId, judul: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 60) });
@@ -316,12 +334,17 @@
     el.innerHTML = `<div class="split"><form class="card card-pad form-stack" id="fid"><h3>${icon('school')} Identitas lembaga</h3>
         ${fld('nama_aplikasi', 'Nama aplikasi', s.nama_aplikasi, 'maxlength="60"', 'Tampil di header, login, dan judul halaman')}
         ${fld('nama_lembaga', 'Nama lembaga resmi', s.nama_lembaga, 'maxlength="120"', 'Dipakai di kuitansi, rekap PDF, dan pesan WA')}
-        <div class="grid-2">${fld('nama_unit', 'Nama unit', s.nama_unit)}${fld('slogan', 'Slogan singkat', s.slogan)}</div>
-        <div class="field"><label>Alamat</label><textarea class="input" name="alamat" rows="2">${esc(s.alamat || '')}</textarea></div>
-        ${fld('kuitansi_penerima', 'Nama penerima di kuitansi', s.kuitansi_penerima)}
+        ${fld('slogan', 'Slogan singkat', s.slogan)}
+        <div class="grid-2">${fld('nama_unit', 'Nama unit', s.nama_unit, 'maxlength="100"', 'Menjadi “Unit Pembelajaran” di piagam Ahe')}${fld('no_unit', 'No. Unit', s.no_unit, 'maxlength="30"', '<span id="id-nomor">Dipakai di nomor piagam</span>')}</div>
+        ${fld('kepala_unit', 'Kepala Unit', s.kepala_unit || s.kuitansi_penerima, 'maxlength="100"', 'Penanda tangan kuitansi & nama Kepala Unit di piagam')}
+        <div class="grid-2">${fld('kecamatan', 'Kecamatan', s.kecamatan, 'maxlength="80"')}${fld('desa', 'Desa / Kelurahan', s.desa, 'maxlength="80"', 'Menjadi “Desa / Kelurahan” di piagam Ala')}</div>
+        <div class="field"><label>Alamat</label><textarea class="input" name="alamat" rows="2" maxlength="200" placeholder="Contoh: Jl. Pendidikan No. 45, RT 05">${esc(s.alamat || '')}</textarea><span class="help">Isi nama jalan, RT, dan nomor. Desa & kecamatan diambil dari kolom di atas.</span></div>
         <button class="btn btn-primary" type="submit">${icon('save')} Simpan identitas</button></form>
       <div class="stack"><div class="card card-pad"><h3 class="mb-12">${icon('image')} Logo lembaga</h3><div class="row-gap"><div id="lg-prev" style="width:96px;height:96px;border-radius:24px;background:var(--p-50);display:grid;place-items:center;overflow:hidden;border:1px solid var(--line)">${logo ? `<img src="${logo}" alt="" style="width:100%;height:100%;object-fit:contain">` : icon('image', 'ic-xl')}</div>
         <div class="stack-sm"><button class="btn btn-soft btn-sm" id="lg-up">${icon('upload')} Unggah logo</button>${logo ? `<button class="btn btn-danger-ghost btn-sm" id="lg-del">${icon('trash-2')} Hapus logo</button>` : ''}<span class="tiny muted">PNG transparan disarankan. Dikompres otomatis.</span></div></div></div>
+        <div class="card card-pad"><h3 class="mb-12">${icon('square-pen')} Tanda tangan kuitansi</h3><div class="row-gap" style="align-items:flex-start"><div id="ttd-prev" class="ttd-prev">${s.ttd_data ? `<img src="${s.ttd_data}" alt="Tanda tangan">` : '<span class="tiny muted">Belum ada</span>'}</div>
+          <div class="stack-sm"><button class="btn btn-soft btn-sm" id="ttd-up">${icon('upload')} Unggah tanda tangan</button>${s.ttd_data ? `<button class="btn btn-danger-ghost btn-sm" id="ttd-del">${icon('trash-2')} Hapus</button>` : ''}<span class="tiny muted">PNG transparan paling baik. Foto/scan di kertas putih juga bisa — latar putih dihapus otomatis.</span></div></div>
+          <p class="help mt-8">${icon('info', 'ic-sm')} Tampil di atas nama ${esc(s.kepala_unit || 'Kepala Unit')} pada kuitansi (layar, cetak, PDF, dan link WA).</p></div>
         <div class="card card-pad"><h3 class="mb-12">${icon('palette')} Warna utama</h3><div class="swatches">${PRESET_WARNA.map(([h, n]) => `<button class="swatch ${h.toLowerCase() === warna.toLowerCase() ? 'on' : ''}" style="background:${h}" data-w="${h}" title="${n}" aria-label="${n}">${h.toLowerCase() === warna.toLowerCase() ? icon('check', 'ic-sm') : ''}</button>`).join('')}
           <label class="swatch" style="background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);position:relative" title="Warna lain"><input type="color" id="w-pick" value="${esc(warna)}" style="opacity:0;position:absolute;inset:0;cursor:pointer"></label></div>
           <div class="row-gap mt-12"><span class="chip num" id="w-hex">${esc(warna.toUpperCase())}</span><span class="small" id="w-kontras"></span></div>
@@ -330,7 +353,8 @@
           <button class="btn btn-primary mt-12" id="w-simpan">${icon('save')} Simpan warna</button></div></div></div>`;
     $('#fid').onsubmit = (e) => {
       e.preventDefault(); const f = e.target;
-      const v = {}; ['nama_aplikasi', 'nama_lembaga', 'nama_unit', 'slogan', 'alamat', 'kuitansi_penerima'].forEach((k) => { v[k] = f[k].value.trim(); });
+      const v = {}; ['nama_aplikasi', 'nama_lembaga', 'nama_unit', 'no_unit', 'kepala_unit', 'kecamatan', 'desa', 'slogan', 'alamat'].forEach((k) => { v[k] = f[k].value.trim(); });
+      v.kuitansi_penerima = v.kepala_unit;
       if (!v.nama_aplikasi) return U.toast('Nama aplikasi wajib diisi', 'warn');
       simpanSet(v, 'Identitas'); A.render(); document.querySelector('.brand .t1') && (document.querySelector('.brand .t1').textContent = v.nama_aplikasi);
     };
@@ -351,6 +375,14 @@
       } catch (e) { U.toast(e.message, 'bad'); }
     };
     const ld = $('#lg-del'); if (ld) ld.onclick = () => { simpanSet({ logo_data: '' }, 'Logo dihapus'); A.refresh(true); };
+    $('#ttd-up').onclick = async () => {
+      const f = await U.pilihFile('image/png,image/jpeg,image/webp'); if (!f) return;
+      try { const url = await U.olahTtd(f); simpanSet({ ttd_data: url }, 'Tanda tangan'); A.refresh(true); }
+      catch (e) { U.toast(e.message, 'bad', 7000); }
+    };
+    const td = $('#ttd-del'); if (td) td.onclick = async () => { if (await U.confirm({ title: 'Hapus tanda tangan?', text: 'Kuitansi akan tampil tanpa gambar tanda tangan.', ok: 'Hapus', danger: true })) { simpanSet({ ttd_data: '' }, 'Tanda tangan dihapus'); A.refresh(true); } };
+    const nomorContoh = () => { const el = $('#id-nomor'); if (!el) return; const nu = $('#fid').no_unit.value.trim(); el.innerHTML = 'Contoh nomor piagam: <b class="num">' + esc(Piagam.formatNomor(1, 'ahe', U.today(), nu)) + '</b>'; };
+    $('#fid').no_unit.addEventListener('input', nomorContoh); nomorContoh();
   }
   function setDaftar(el) {
     const s = D().settings;

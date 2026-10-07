@@ -256,18 +256,18 @@ Selama mode demo berlaku hal-hal berikut:
 ### D2. Urutan pengaturan yang disarankan
 | No | Menu | Yang diisi |
 |---|---|---|
-| 1 | **Pengaturan → Identitas** | Nama aplikasi, nama lembaga, unit, alamat, logo, **warna utama** |
+| 1 | **Pengaturan → Identitas** | Nama aplikasi, nama lembaga, Nama unit, **No. Unit** (dipakai di nomor piagam, contoh `001/AHE-SGT/X/2026`), **Kepala Unit** (penanda tangan kuitansi & piagam), kecamatan, desa/kelurahan, alamat (jalan, RT, nomor), logo, **gambar tanda tangan** (PNG; foto/scan di kertas putih juga bisa), dan **warna utama** |
 | 2 | **Pengaturan → SPP** | Tanggal jatuh tempo, **Mulai pencatatan SPP** (isi bulan ini agar bulan-bulan lama tidak dianggap menunggak), lalu **Atur tarif** |
 | 3 | **Pengaturan → Kehadiran** | **Mulai pencatatan kehadiran** (isi tanggal mulai pakai aplikasi), batas absen (bawaan 10 hari les), batas siswa per guru (bawaan 10) |
 | 4 | **Guru** | Tambah guru dan kata sandinya. Guru login dengan memilih namanya dari daftar. |
 | 5 | **Siswa → Impor Excel** | Unduh template, isi data siswa lama, lalu unggah. Data yang belum lengkap tetap bisa masuk dan ditandai "belum lengkap". |
 | 6 | **Hari Libur** | Tandai libur khusus (Senin–Jumat selain libur otomatis dianggap hari les) |
-| 7 | **Landing Page** | Ubah teks, foto kegiatan, video, lokasi. Pratinjau langsung di sebelah kanan. |
-| 8 | **Pengaturan → Piagam** | Unggah gambar template piagam Ahe dan Ala, lalu **Atur Posisi Teks** (kalibrasi) |
+| 7 | **Landing Page** | Foto **banner** (landscape, ideal 1920×800), teks, foto kegiatan, video, lokasi, dan footer (link Facebook/Instagram/YouTube/TikTok). Di bagian **Lokasi & Peta**, tempel link Google Maps (Bagikan → Salin link) lalu klik **Pasang**, dan titik merah muncul di peta. |
+| 8 | **Pengaturan → Piagam** | Unggah gambar template piagam Ahe dan Ala, lalu **Atur Posisi Teks** (kalibrasi). Nomor, Kepala Unit, Unit Pembelajaran, dan Desa/Kelurahan terisi otomatis dari Identitas. |
 | 9 | **Pengaturan → WhatsApp** | Sambungkan Fonnte. Ikuti **PANDUAN-FONNTE.md** (terpisah). |
 
 ### D3. Bagikan ke guru dan orang tua
-- **Guru:** kirim link `.../app.html` dan kata sandinya. Di HP, guru bisa memilih **"Tambahkan ke layar utama"** di menu browser agar aplikasi terbuka seperti app biasa.
+- **Guru:** kirim link `.../app.html` dan kata sandinya. Guru bisa mengganti sandinya sendiri di menu **Akun Saya**. Di HP, guru bisa memilih **"Tambahkan ke layar utama"** di menu browser agar aplikasi terbuka seperti app biasa.
 - **Orang tua / umum:** bagikan link utama `https://USERNAME.github.io/les-aheala/`. Pendaftaran bisa dibuka atau ditutup dari **Pengaturan → Pendaftaran**.
 
 ---

@@ -174,7 +174,7 @@
                 ${ui.buka ? `<div class="picker-list">${guruList.length ? guruList.map((x) => `<button type="button" data-g="${esc(x.id)}" class="${x.id === ui.guruId ? 'on' : ''}">${U.avatar(x.nama, x.id, 'av-sm')}<span style="flex:1"><b>${esc(x.panggilan || x.nama)}</b><br><small class="muted">${esc(x.nama)}</small></span>${x.id === ui.guruId ? icon('circle-check', 'ok') : ''}</button>`).join('') : '<p class="small muted" style="padding:10px">Belum ada guru. Admin perlu menambahkan data guru dan kata sandinya.</p>'}</div>` : ''}</div></div>`
                 : `<div class="field"><label for="l-user">Username <span class="req">*</span></label><div class="input-icon">${icon('user')}<input class="input" id="l-user" name="username" autocomplete="username" required></div></div>`}
               <div class="field"><label for="l-pass">Kata Sandi <span class="req">*</span></label><div class="input-icon">${icon('lock')}<input class="input" id="l-pass" name="password" type="password" autocomplete="current-password" required><button type="button" class="btn btn-ghost btn-icon btn-sm btn-eye" data-eye aria-label="Lihat sandi">${icon('eye')}</button></div>
-                ${ui.peran === 'guru' ? `<span class="help">${icon('info', 'ic-sm')} Kata sandi dibuat dan direset oleh Admin.</span>` : ''}</div>
+                ${ui.peran === 'guru' ? `<span class="help">${icon('info', 'ic-sm')} Kata sandi awal dari Admin — bisa Anda ganti di menu Akun Saya.</span>` : ''}</div>
               <button class="btn btn-primary btn-lg btn-block" type="submit" id="btn-login">Masuk sebagai ${ui.peran === 'guru' ? 'Guru' : 'Admin'} ${icon('log-out')}</button>
             </form>
             ${ui.peran === 'guru' && set.wa_admin ? `<p class="small muted mt-16" style="text-align:center">Lupa kata sandi? <a target="_blank" rel="noopener" href="${U.waLink(set.wa_admin, 'Assalamu\'alaikum Admin, saya lupa kata sandi aplikasi les.')}" style="color:var(--wa);font-weight:700">${icon('message-circle', 'ic-sm')} Hubungi Admin</a></p>` : ''}
@@ -265,7 +265,7 @@
     ['guru', 'Guru', 'users'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['spp', 'SPP & Kuitansi', 'receipt'],
     ['piagam', 'Piagam', 'award'], ['libur', 'Hari Libur', 'calendar-x'], ['landing', 'Landing Page', 'layout-template'], ['pengaturan', 'Pengaturan', 'settings']
   ];
-  const NAV_GURU = [['absen', 'Absen Hari Ini', 'calendar-check'], ['riwayat', 'Riwayat Saya', 'history']];
+  const NAV_GURU = [['absen', 'Absen Hari Ini', 'calendar-check'], ['riwayat', 'Riwayat Saya', 'history'], ['akun', 'Akun Saya', 'key-round']];
   A.badge = (k) => {
     const d = A.S.data;
     if (!d || A.S.role !== 'admin') return 0;
@@ -379,6 +379,8 @@
   }[st] || '');
   A.chipBuku = (p) => !p ? '' : p.buku === 'ya' ? `<span class="chip chip-ok">${icon('check')} Sudah</span>` : `<span class="chip chip-warn">${icon('x')} Belum</span>`;
   A.kosong = (ic, judul, teks, aksi) => `<div class="empty"><div class="art">${icon(ic)}</div><h4>${esc(judul)}</h4>${teks ? `<p>${teks}</p>` : ''}${aksi || ''}</div>`;
+  // Kotak centang tampilan saja (dipakai di daftar yang seluruh barisnya bisa diketuk) — tidak menangkap klik
+  A.cekVis = (checked, disabled) => `<span class="check" aria-hidden="true" style="pointer-events:none"><input type="checkbox" tabindex="-1" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span class="box">${icon('check')}</span></span>`;
   A.cek = (attr, checked, disabled) => `<label class="check" onclick="event.stopPropagation()"><input type="checkbox" ${attr || ''} ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span class="box">${icon('check')}</span></label>`;
   A.pager = (total, hal, per) => {
     const n = Math.max(1, Math.ceil(total / per));
@@ -429,7 +431,7 @@
           const kunci = !!lain[s.id];
           const on = ui.sel.has(s.id);
           return `<div class="sitem ${on ? 'on' : ''} ${kunci ? 'lock' : ''}" data-s="${esc(s.id)}" role="checkbox" aria-checked="${on}" tabindex="0">
-            ${A.cek('tabindex="-1"', on, kunci)}${U.avatar(s.nama, s.id)}
+            ${A.cekVis(on, kunci)}${U.avatar(s.nama, s.id)}
             <div class="meta"><div class="nm ellipsis">${esc(s.nama)} ${s.panggilan ? `<small>(${esc(s.panggilan)})</small>` : ''}</div>
             ${kunci ? `<div class="note">${icon('lock', 'ic-sm')} Sudah dicatat oleh ${esc(lain[s.id])}</div>` : ''}</div>
             <span class="chip ${s.program === 'ala' ? 'chip-ala' : 'chip-ahe'}">${Rules.SINGKAT[s.program]} · Lv ${esc(s.level)}${(s.program === 'ahe' && +s.level === 7) || (s.program === 'ala' && (+s.level === 6 || +s.level === 16)) ? ' ★' : ''}</span></div>`;
@@ -534,6 +536,40 @@
     }
     tampilLogin();
   }
+  // ---------------- Guru: ganti kata sandi sendiri ----------------
+  A.page('akun', {
+    role: 'guru', title: 'Akun Saya', crumb: 'Akun Saya',
+    render(view) {
+      const me = A.S.user;
+      const fld = (id, label, ac) => `<div class="field"><label for="${id}">${label} <span class="req">*</span></label><div class="input-icon">${icon('lock')}<input class="input" id="${id}" type="password" autocomplete="${ac}" required minlength="${id === 'ks-lama' ? 1 : 6}"><button type="button" class="btn btn-ghost btn-icon btn-sm btn-eye" data-lihat="${id}" aria-label="Lihat sandi">${icon('eye')}</button></div></div>`;
+      view.innerHTML = `<div class="page-head"><div><h1>Akun Saya</h1><p>Ganti kata sandi yang Anda pakai untuk login absen.</p></div></div>
+        <div class="card card-pad" style="max-width:520px"><div class="row-gap mb-16">${U.avatar(me.nama, me.id)}<div><b>${esc(me.nama)}</b><div class="small muted">Guru Pembimbing</div></div></div>
+          <form id="f-sandi" class="form-stack" novalidate>
+            ${fld('ks-lama', 'Kata sandi saat ini', 'current-password')}
+            ${fld('ks-baru', 'Kata sandi baru', 'new-password')}
+            ${fld('ks-ulang', 'Ulangi kata sandi baru', 'new-password')}
+            <p class="tiny muted">${icon('info', 'ic-sm')} Minimal 6 karakter. Lupa kata sandi? Minta Admin meresetnya.</p>
+            <button class="btn btn-primary btn-lg btn-block" id="ks-simpan">${icon('save')} Simpan kata sandi baru</button></form></div>`;
+      $$('[data-lihat]').forEach((b) => b.onclick = () => { const i = $('#' + b.dataset.lihat); i.type = i.type === 'password' ? 'text' : 'password'; b.innerHTML = icon(i.type === 'password' ? 'eye' : 'eye-off'); });
+      $('#f-sandi').onsubmit = async (e) => {
+        e.preventDefault();
+        const lama = $('#ks-lama').value, baru = $('#ks-baru').value, ulang = $('#ks-ulang').value;
+        if (!lama) return U.toast('Isi kata sandi saat ini', 'warn');
+        if (baru.length < 6) return U.toast('Kata sandi baru minimal 6 karakter', 'warn');
+        if (baru !== ulang) return U.toast('Ulangan kata sandi baru tidak sama', 'warn');
+        if (baru === lama) return U.toast('Kata sandi baru harus berbeda', 'warn');
+        const b = $('#ks-simpan'); const asli = b.innerHTML;
+        b.disabled = true; b.innerHTML = `${icon('loader-circle', 'spin')} Menyimpan…`;
+        try {
+          await U.api('gantiSandiSaya', { token: A.S.token, sandiLama: lama, sandiBaru: baru });
+          U.toast('Kata sandi berhasil diganti. Gunakan sandi baru saat login berikutnya.', 'ok', 6000);
+          e.target.reset();
+        } catch (er) { U.toast(er.message, 'bad'); }
+        b.disabled = false; b.innerHTML = asli;
+      };
+    }
+  });
+
   A.boot = boot;
   document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 0));
 })();

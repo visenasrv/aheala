@@ -150,6 +150,23 @@
   };
 
   // ---------------- Nomor berikutnya ----------------
+  // Nomor piagam otomatis dari No. Unit (Pengaturan → Identitas): 001/AHE-<No. Unit>/<bulan romawi>/<tahun>
+  const ROMAWI = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  P.formatNomor = (n, jenis, tgl, noUnit) => {
+    const t = U.isTgl(tgl) ? tgl : U.today();
+    const kode = String(jenis || 'ahe').toUpperCase() + (noUnit ? '-' + String(noUnit).trim() : '');
+    return String(n).padStart(3, '0') + '/' + kode + '/' + ROMAWI[+t.slice(5, 7) - 1] + '/' + t.slice(0, 4);
+  };
+  P.nomorOtomatis = (jenis, tgl, kecualiId) => {
+    const t = U.isTgl(tgl) ? tgl : U.today();
+    let maks = 0;
+    (D().piagam[jenis] || []).forEach((r) => {
+      if (r.id === kecualiId) return;
+      const m = String(r.nomor || '').match(/^(\d+)\/.*\/(\d{4})$/);
+      if (m && m[2] === t.slice(0, 4) && +m[1] > maks) maks = +m[1];
+    });
+    return P.formatNomor(maks + 1, jenis, t, D().settings.no_unit);
+  };
   P.nomorBerikut = (nomor) => String(nomor || '').replace(/\d+/, (m) => String(+m + 1).padStart(m.length, '0'));
 
   // ======================================================================
@@ -199,14 +216,19 @@
     } else {
       siswaId = params[2] || ''; kKey = params[3] || '';
       const s = siswaId && R.idx().siswa[siswaId];
-      const dr = !s ? U.ls.get(DRAFT(jenis), null) : null;
-      rec = dr || { nomor: set[jenis + '_nomor_template'] || '', kepala: set[jenis + '_kepala_unit_template'] || '', tglLulus: U.today() };
-      if (jenis === 'ahe') rec.unit = rec.unit || set.ahe_unit_template || set.nama_unit || ''; else rec.desa = rec.desa || set.ala_desa_template || '';
-      if (s) {
-        rec.nama = s.nama;
-        rec.ttl = [U.hurufKata(s.tempatLahir || ''), s.tglLahir ? U.tglPanjang(s.tglLahir) : ''].filter(Boolean).join(', ');
-        if (jenis === 'ala') { rec.kelompok = kelompokDariKey(kKey || ((R.siap(R.prog(s.id) || {})[0]) || 'tambahKurang')); if (s.desa) rec.desa = U.hurufKata(s.desa); }
-        rec.siswaId = s.id;
+      // Draf tersimpan dipakai bila milik siswa yang sama (mis. kembali dari "Atur Posisi Teks")
+      const dr = U.ls.get(DRAFT(jenis), null);
+      const pakaiDraf = dr && (s ? dr.siswaId === s.id : !dr.siswaId);
+      const tgl = U.today();
+      rec = pakaiDraf ? dr : { nomor: P.nomorOtomatis(jenis, tgl), kepala: set.kepala_unit || '', tglLulus: tgl, _nomorAuto: true };
+      if (!pakaiDraf) {
+        if (jenis === 'ahe') rec.unit = set.nama_unit || ''; else rec.desa = set.desa || '';
+        if (s) {
+          rec.nama = s.nama;
+          rec.ttl = [U.hurufKata(s.tempatLahir || ''), s.tglLahir ? U.tglPanjang(s.tglLahir) : ''].filter(Boolean).join(', ');
+          if (jenis === 'ala') rec.kelompok = kelompokDariKey(kKey || ((R.siap(R.prog(s.id) || {})[0]) || 'tambahKurang'));
+          rec.siswaId = s.id;
+        }
       }
       if (jenis === 'ala' && !rec.kelompok) rec.kelompok = KEL[0];
     }
@@ -221,15 +243,21 @@
         k === 'kelompok' ? `<select class="input" name="kelompok">${KEL.map((x) => `<option ${rec.kelompok === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`
         : k === 'tglLulus' ? `<input class="input" type="date" name="tglLulus" value="${esc(rec.tglLulus || U.today())}">`
         : `<input class="input" name="${k}" value="${esc(rec[k] || '')}" maxlength="150">`}</div>`).join('')}
-        <div class="row-gap"><a class="btn btn-light btn-sm" href="#/pengaturan/piagam?kal=${jenis}&dari=buat">${icon('move')} Atur Posisi Teks</a><span class="spacer"></span>${edit ? `<a class="btn btn-light" href="#/piagam/hasil/${jenis}/${rec.id}">Batal</a>` : ''}<button class="btn btn-primary btn-lg" type="submit" id="pg-simpan">${icon('save')} Simpan & Lihat Hasil</button></div></form></div>
+        <div class="row-gap"><a class="btn btn-light btn-sm" href="#/pengaturan/piagam?kal=${jenis}&dari=buat&kembali=${encodeURIComponent(location.hash)}" id="pg-atur">${icon('move')} Atur Posisi Teks</a><span class="spacer"></span>${edit ? `<a class="btn btn-light" href="#/piagam/hasil/${jenis}/${rec.id}">Batal</a>` : ''}<button class="btn btn-primary btn-lg" type="submit" id="pg-simpan">${icon('save')} Simpan & Lihat Hasil</button></div></form></div>
       <div class="card card-pad" style="align-self:start;position:sticky;top:80px"><div class="row-gap mb-12"><h4 style="flex:1">${icon('eye')} Pratinjau langsung</h4><span class="chip" id="pg-tpl">A4 landscape</span></div><div class="canvas-wrap"><canvas id="pg-cv"></canvas></div></div></div>`;
     const f = $('#fpg'), cv = $('#pg-cv');
     if (window.innerWidth >= 1100) $('.split', view).style.gridTemplateColumns = 'minmax(0,0.9fr) minmax(0,1.1fr)';
     const baca = () => { const o = Object.assign({}, rec); fields.forEach(([k]) => { o[k] = f[k].value.trim(); }); o.siswaId = siswaId; return o; };
     const gambar = U.debounce(async () => { const r = await P.render(cv, jenis, baca(), { diam: true }); const t = $('#pg-tpl'); if (t) t.textContent = r.sementara ? 'Template sementara' : 'Template resmi'; }, 120);
     gambar();
-    f.addEventListener('input', () => { gambar(); if (!edit) U.ls.set(DRAFT(jenis), baca()); });
-    f.addEventListener('change', gambar);
+    const simpanDraf = () => { if (!edit) U.ls.set(DRAFT(jenis), Object.assign(baca(), { _nomorAuto: rec._nomorAuto })); };
+    simpanDraf(); // isian langsung tersimpan, agar tetap utuh setelah "Atur Posisi Teks"
+    f.addEventListener('input', (e) => {
+      if (e.target.name === 'nomor') rec._nomorAuto = false;
+      if (e.target.name === 'tglLulus' && rec._nomorAuto && !edit && f.tglLulus.value) f.nomor.value = P.nomorOtomatis(jenis, f.tglLulus.value);
+      gambar(); simpanDraf();
+    });
+    f.addEventListener('change', (e) => { if (e.target.name === 'tglLulus' && rec._nomorAuto && !edit && f.tglLulus.value) { f.nomor.value = P.nomorOtomatis(jenis, f.tglLulus.value); simpanDraf(); } gambar(); });
     if (f.ttl) f.ttl.onblur = () => { const v = f.ttl.value; const i = v.indexOf(','); f.ttl.value = i > 0 ? U.hurufKata(v.slice(0, i)) + v.slice(i) : U.hurufKata(v); gambar(); };
     $('#pg-pilih').onclick = (e) => { e.preventDefault(); pilihSiswa(jenis); };
     let terkunci = false;
@@ -242,18 +270,12 @@
       terkunci = true; $('#pg-simpan').disabled = true;
       const baru = !edit;
       const r = Object.assign({}, o, { id: o.id || U.uid(), updatedAt: U.nowIso(), createdAt: o.createdAt || U.nowIso() });
-      delete r.jenis;
-      let template = null;
-      if (baru) {
-        template = { nomor: set.nomor_auto_naik !== 'tidak' ? P.nomorBerikut(r.nomor) : r.nomor, kepala: r.kepala };
-        if (jenis === 'ahe') template.unit = r.unit; else template.desa = r.desa;
-      }
+      delete r.jenis; delete r._nomorAuto;
       A.mut((d) => {
         const list = d.piagam[jenis] = d.piagam[jenis] || [];
         const i = list.findIndex((x) => x.id === r.id); if (i >= 0) list[i] = r; else list.push(r);
-        if (template) { d.settings[jenis + '_nomor_template'] = template.nomor; d.settings[jenis + '_kepala_unit_template'] = template.kepala; if (jenis === 'ahe') d.settings.ahe_unit_template = template.unit; else d.settings.ala_desa_template = template.desa; }
       }, { render: false });
-      A.kirim({ op: 'upsert', jenis, record: r, template: template || undefined, _label: 'Piagam ' + r.nama });
+      A.kirim({ op: 'upsert', jenis, record: r, _label: 'Piagam ' + r.nama });
       // Hapus tanda "siap piagam" pada program siswa
       if (siswaId) {
         const key = jenis === 'ahe' ? 'ahe' : keyDariKelompok(r.kelompok);
@@ -329,32 +351,16 @@
   // ======================================================================
   P.pengaturan = (el) => {
     const qs = A.rute().qs || new URLSearchParams();
-    const ui = A.ui.pgSet = A.ui.pgSet || { sub: 'isian', kal: 'ahe', pilih: 'nama', bantu: true, langkah: 5, data: 'form', undo: [] };
-    if (qs.get('kal') && ui._qs !== qs.toString()) { ui._qs = qs.toString(); ui.sub = 'kal'; ui.kal = qs.get('kal') === 'ala' ? 'ala' : 'ahe'; ui.dari = qs.get('dari'); }
-    el.innerHTML = `<div class="utabs mb-16">${[['isian', 'Template Isian', 'notebook-pen'], ['file', 'File Template', 'image'], ['kal', 'Kalibrasi Posisi Teks', 'move']].map(([k, l, ic]) => `<button class="utab ${ui.sub === k ? 'on' : ''}" data-sub="${k}">${icon(ic)} ${l}</button>`).join('')}</div><div id="pg-set"></div>`;
+    const ui = A.ui.pgSet = A.ui.pgSet || { sub: 'file', kal: 'ahe', pilih: 'nama', bantu: true, langkah: 5, data: 'form', undo: [] };
+    if (ui.sub === 'isian') ui.sub = 'file';
+    if (qs.get('kal') && ui._qs !== qs.toString()) { ui._qs = qs.toString(); ui.sub = 'kal'; ui.kal = qs.get('kal') === 'ala' ? 'ala' : 'ahe'; ui.dari = qs.get('dari'); ui.kembali = qs.get('kembali') || ''; }
+    el.innerHTML = `<div class="note-box mb-16">${icon('info')}<span>Nomor piagam, Nama Kepala Unit, Unit Pembelajaran (Ahe), dan Desa/Kelurahan (Ala) terisi otomatis dari <a href="#/pengaturan/identitas" style="font-weight:700">Pengaturan → Identitas</a>.</span></div>
+      <div class="utabs mb-16">${[['file', 'File Template', 'image'], ['kal', 'Kalibrasi Posisi Teks', 'move']].map(([k, l, ic]) => `<button class="utab ${ui.sub === k ? 'on' : ''}" data-sub="${k}">${icon(ic)} ${l}</button>`).join('')}</div><div id="pg-set"></div>`;
     $$('[data-sub]', el).forEach((b) => b.onclick = () => { ui.sub = b.dataset.sub; P.pengaturan(el); });
     const box = $('#pg-set', el);
     if (ui.sub === 'file') return fileTemplate(box);
-    if (ui.sub === 'kal') return kalibrasi(box, ui);
-    return isian(box);
+    return kalibrasi(box, ui);
   };
-  function isian(box) {
-    const s = D().settings;
-    box.innerHTML = `<div class="split half">${['ahe', 'ala'].map((j) => `<form class="card card-pad form-stack" data-j="${j}"><h3>${icon(j === 'ahe' ? 'book-open' : 'calculator')} Piagam ${j === 'ahe' ? 'Ahe' : 'Ala'}</h3>
-        <div class="field"><label>Nomor berikutnya</label><input class="input" name="nomor" value="${esc(s[j + '_nomor_template'] || '')}"><span class="help">Contoh: 001/${j.toUpperCase()}-SGT/X/2026</span></div>
-        <div class="field"><label>Nama Kepala Unit</label><input class="input" name="kepala" value="${esc(s[j + '_kepala_unit_template'] || '')}"></div>
-        <div class="field"><label>${j === 'ahe' ? 'Nama Unit Pembelajaran' : 'Desa / Kelurahan'}</label><input class="input" name="lain" value="${esc(s[j === 'ahe' ? 'ahe_unit_template' : 'ala_desa_template'] || (j === 'ahe' ? s.nama_unit || '' : ''))}"></div>
-        <button class="btn btn-primary">${icon('save')} Simpan</button></form>`).join('')}</div>
-      <div class="card card-pad mt-16"><label class="switch"><input type="checkbox" id="pg-naik" ${s.nomor_auto_naik !== 'tidak' ? 'checked' : ''}><span class="track"></span><span><b>Nomor naik otomatis</b><br><span class="small muted">Setelah piagam baru disimpan, angka pertama nomor dinaikkan 1 (009 → 010). Mengedit piagam lama tidak mengubah template.</span></span></label></div>`;
-    $$('form[data-j]', box).forEach((f) => f.onsubmit = (e) => {
-      e.preventDefault(); const j = f.dataset.j;
-      const t = { nomor: f.nomor.value.trim(), kepala: f.kepala.value.trim() }; if (j === 'ahe') t.unit = f.lain.value.trim(); else t.desa = f.lain.value.trim();
-      A.mut((d) => { d.settings[j + '_nomor_template'] = t.nomor; d.settings[j + '_kepala_unit_template'] = t.kepala; d.settings[j === 'ahe' ? 'ahe_unit_template' : 'ala_desa_template'] = t.unit || t.desa; }, { render: false });
-      A.kirim(Object.assign({ op: 'saveTemplate', jenis: j, _label: 'Template isian' }, t));
-      U.toast('Template isian Piagam ' + (j === 'ahe' ? 'Ahe' : 'Ala') + ' disimpan');
-    });
-    $('#pg-naik', box).onchange = (e) => { A.mut((d) => { d.settings.nomor_auto_naik = e.target.checked ? 'ya' : 'tidak'; }, { render: false }); A.kirim({ op: 'saveSetting', key: 'nomor_auto_naik', value: e.target.checked ? 'ya' : 'tidak' }); U.toast('Disimpan'); };
-  }
   function fileTemplate(box) {
     const meta = D().templateFiles || {};
     box.innerHTML = `<div class="split half">${['ahe', 'ala'].map((j) => { const m = meta[j]; return `<div class="card card-pad" data-tj="${j}"><div class="row-gap mb-12"><h3 style="flex:1">Template Piagam ${j === 'ahe' ? 'Ahe' : 'Ala'}</h3>${m ? '<span class="chip chip-ok">Aktif</span>' : '<span class="chip chip-warn">Belum ada</span>'}</div>
@@ -394,16 +400,16 @@
     if (mode === 'panjang') return { nomor: '999/AHE-SGT/XII/2026-UJI-PANJANG', nama: 'Muhammad Abdurrahman Al-Fatih Wicaksono Saputra', ttl: 'Sangatta Selatan Kutai Timur, 28 September 2019', unit: 'Unit Pembelajaran Teluk Lingga Sangatta Utara', kelompok: R.KELOMPOK.kaliBagi, desa: 'Swarga Bara Sangatta Utara', tglLulus: '2026-09-28', kepala: 'Hj. Siti Rahmawati Nurhaliza, S.Pd., M.Pd.' };
     if (mode === 'terakhir') { const l = (D().piagam[j] || []).slice(-1)[0]; if (l) return l; }
     if (mode === 'form') { const dr = U.ls.get(DRAFT(j), null); if (dr) return dr; }
-    return { nomor: s[j + '_nomor_template'] || '001/' + j.toUpperCase() + '-SGT/X/2026', nama: 'Aisyah Putri Ramadhani', ttl: 'Sangatta, 5 Maret 2019', unit: s.ahe_unit_template || 'Unit Sangatta', kelompok: R.KELOMPOK.tambahKurang, desa: s.ala_desa_template || 'Teluk Lingga', tglLulus: U.today(), kepala: s[j + '_kepala_unit_template'] || 'Nama Kepala Unit' };
+    return { nomor: P.nomorOtomatis(j, U.today()), nama: 'Aisyah Putri Ramadhani', ttl: 'Sangatta, 5 Maret 2019', unit: s.nama_unit || 'Unit Sangatta', kelompok: R.KELOMPOK.tambahKurang, desa: s.desa || 'Teluk Lingga', tglLulus: U.today(), kepala: s.kepala_unit || 'Nama Kepala Unit' };
   }
   function kalibrasi(box, ui) {
     const j = ui.kal;
     let lay = P.layout(j);
     if (!lay[ui.pilih]) ui.pilih = 'nama';
-    box.innerHTML = `${ui.dari === 'buat' ? `<div class="note-box mb-16" style="background:var(--sun-50);color:#7A5600">${icon('info')}<span style="flex:1">Atur posisi teks, lalu kembali ke formulir. Isian formulir tetap utuh.</span><a class="btn btn-accent btn-sm" href="#/piagam/buat/${j}">${icon('arrow-left')} Kembali ke Formulir</a></div>` : ''}
+    box.innerHTML = `${ui.dari === 'buat' ? `<div class="note-box mb-16" style="background:var(--sun-50);color:#7A5600">${icon('info')}<span style="flex:1">Atur posisi teks, lalu kembali ke formulir. Isian formulir tetap utuh.</span><a class="btn btn-accent btn-sm" href="${ui.kembali && /^#\/piagam\/(buat|edit)\//.test(ui.kembali) ? esc(ui.kembali) : '#/piagam/buat/' + j}">${icon('arrow-left')} Kembali ke Formulir</a></div>` : ''}
       <div class="kal-grid"><div class="card card-pad"><div class="row-gap mb-12"><div class="seg"><button class="${j === 'ahe' ? 'on' : ''}" data-j="ahe">Piagam Ahe</button><button class="${j === 'ala' ? 'on' : ''}" data-j="ala">Piagam Ala</button></div><span class="spacer"></span>
         <label class="check"><input type="checkbox" id="k-bantu" ${ui.bantu ? 'checked' : ''}><span class="box">${icon('check')}</span><span class="small strong">Kotak bantu</span></label>
-        <select class="input" id="k-data" style="width:auto;min-height:38px"><option value="form" ${ui.data === 'form' ? 'selected' : ''}>Data: isian formulir</option><option value="terakhir" ${ui.data === 'terakhir' ? 'selected' : ''}>Piagam terakhir</option><option value="isian" ${ui.data === 'isian' ? 'selected' : ''}>Template isian</option><option value="panjang" ${ui.data === 'panjang' ? 'selected' : ''}>Uji teks panjang</option></select></div>
+        <select class="input" id="k-data" style="width:auto;min-height:38px"><option value="form" ${ui.data === 'form' ? 'selected' : ''}>Data: isian formulir</option><option value="terakhir" ${ui.data === 'terakhir' ? 'selected' : ''}>Piagam terakhir</option><option value="isian" ${ui.data === 'isian' ? 'selected' : ''}>Contoh data identitas</option><option value="panjang" ${ui.data === 'panjang' ? 'selected' : ''}>Uji teks panjang</option></select></div>
         <div class="canvas-wrap"><canvas id="k-cv" style="cursor:crosshair"></canvas></div><p class="tiny muted mt-8">${icon('mouse-pointer-click', 'ic-sm')} Seret tulisan untuk memindah, atau ketuk posisi baru untuk kolom terpilih.</p></div>
       <div class="card card-pad stack" style="align-self:start"><div class="field"><label>Kolom</label><select class="input" id="k-f">${Object.keys(lay).map((k) => `<option value="${k}" ${ui.pilih === k ? 'selected' : ''}>${LABEL[k]}</option>`).join('')}</select></div>
         <div><div class="label mb-12">Posisi <span class="muted small" id="k-pos"></span></div><div class="row-gap"><div class="pad">
