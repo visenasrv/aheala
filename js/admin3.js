@@ -908,9 +908,15 @@
         <p class="small">Semua siswa, guru, kehadiran, SPP, kuitansi, hari libur, piagam, dan galeri saat ini adalah <b>data contoh</b>. Silakan coba semua fitur dengan bebas.</p>
         <ul class="demo-list mt-12">
           ${li('key-round', 'p-700', 'Login guru: pilih nama guru mana saja, sandi <b>guru1234</b>.')}
-          ${li('message-circle', 'ok-700', 'WhatsApp untuk orang tua <b>tidak dikirim</b> ke nomor contoh; pesannya <b>dialihkan ke WA admin</b> (maks. 20 pesan/hari) agar Anda bisa melihat isinya.')}
+          ${li('message-circle', 'ok-700', 'WhatsApp untuk orang tua <b>tidak dikirim</b> ke nomor contoh; pesannya <b>dialihkan ke WA admin</b> (maks. 20 pesan/hari) agar Anda bisa melihat isinya — kecuali ke <b>nomor uji</b> di bawah.')}
           ${li('globe', 'p-700', 'Landing page & formulir menampilkan tanda kecil "Mode uji coba". Jangan bagikan link ke orang tua dulu.')}
         </ul></div>
+      <div class="card card-pad" id="demo-uji"><h3 class="mb-8">${icon('send')} Uji kirim WA ke nomor asli</h3>
+        <p class="small muted mb-12">Pesan ke nomor di daftar ini <b>benar-benar terkirim</b> (tidak dialihkan ke admin). Maksimal 5 nomor.</p>
+        <div class="row-gap" style="flex-wrap:wrap;gap:6px" id="du-list">${String(s.demo_wa_izin || '').split(',').filter(String).map((n) => `<span class="chip chip-ok">${icon('phone', 'ic-sm')} ${esc(U.tampilWa(n))}<button class="chip-x" data-du-hapus="${esc(n)}" aria-label="Hapus nomor">${icon('x', 'ic-sm')}</button></span>`).join('') || '<span class="small muted">Belum ada nomor uji.</span>'}</div>
+        <div class="row-gap mt-12"><input class="input" id="du-no" inputmode="tel" placeholder="Contoh: 0812 3456 7890" style="flex:1"><button class="btn btn-soft" id="du-tambah">${icon('plus')} Tambah</button></div>
+        <ol class="ps-langkah mt-12"><li>Tambahkan nomor WA asli (misalnya HP Anda sendiri atau satu orang tua yang sudah diberi tahu).</li><li>Buka <b>Siswa</b>, edit salah satu siswa demo, ganti <b>No. WA orang tua</b> dengan nomor itu.</li><li>Coba fitur: tandai SPP lunas + kirim kuitansi WA, tombol <b>Ingatkan</b> tunggakan, atau terima pendaftar.</li></ol>
+        <div class="note-box warn mt-12">${icon('triangle-alert')}<span>Isi pesan memakai <b>data contoh</b> (nama siswa demo). Beri tahu penerima bahwa ini uji coba. Pengingat otomatis harian juga terkirim sungguhan ke nomor ini.</span></div></div>
       <div class="card card-pad"><h3 class="mb-12">${icon('refresh-cw')} Isi ulang data demo</h3>
         <p class="small muted">Kembalikan data contoh seperti semula (semua perubahan percobaan Anda dibuang). Berguna bila data sudah berantakan setelah banyak dicoba.</p>
         <button class="btn btn-light mt-12" id="demo-ulang">${icon('refresh-cw')} Isi ulang data demo</button></div></div>
@@ -954,6 +960,17 @@
       if (!(await U.confirm({ title: 'Isi ulang data demo?', text: 'Semua perubahan percobaan dibuang dan data contoh dikembalikan seperti semula.', ok: 'Isi ulang' }))) return;
       jalankan(b, 'ulangi', {}, 'Data demo diisi ulang');
     };
+    const daftarUji = () => String(D().settings.demo_wa_izin || '').split(',').filter(String);
+    const simpanUji = (list) => { simpanSet({ demo_wa_izin: list.join(',') }, 'Nomor uji'); A.render(); };
+    $('#du-tambah').onclick = () => {
+      const n = U.normWa($('#du-no').value);
+      if (!/^62\d{8,13}$/.test(n || '')) return U.toast('Nomor WA tidak valid', 'warn');
+      const l = daftarUji(); if (l.includes(n)) return U.toast('Nomor sudah ada', 'info');
+      if (l.length >= 5) return U.toast('Maksimal 5 nomor uji', 'warn');
+      simpanUji(l.concat([n]));
+    };
+    $('#du-no').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#du-tambah').click(); } };
+    $$('[data-du-hapus]').forEach((b) => b.onclick = () => simpanUji(daftarUji().filter((x) => x !== b.dataset.duHapus)));
     $('#demo-akhiri').onclick = async (e) => {
       const b = e.currentTarget;
       const simpanGaleri = $('#demo-galeri').checked;

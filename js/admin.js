@@ -125,7 +125,7 @@
 
   // Pengiriman WA langsung (Fonnte) dengan cadangan wa.me
   A.tplAktif = (key) => !String((D().settings || {}).tpl_nonaktif || '').split(',').includes(key);
-  A.isiTpl = (key, vars) => String((D().settings || {})[key] || '').replace(/\{([a-z_]+)\}/g, (m, k) => vars[k] !== undefined ? vars[k] : m);
+  A.isiTpl = (key, vars) => { let t = String((D().settings || {})[key] || ''); const o = String((vars || {}).ortu || '').trim(); if (vars && vars.ortu !== undefined && (!o || o === 'Bapak/Ibu' || /^(bapak|bpk|ibu|bu|pak|ayah|bunda|mama|papa|hj|h)\b\.?/i.test(o))) t = t.replace(/Bapak\/Ibu\s+\{ortu\}/gi, '{ortu}'); return t.replace(/\{([a-z_]+)\}/g, (m, k) => vars[k] !== undefined ? vars[k] : m); };
   A.varsSiswa = (s, extra) => {
     const set = D().settings || {}; const p = R.prog(s.id);
     return Object.assign({ lembaga: set.nama_lembaga || set.nama_aplikasi || '', nama: s.nama || '', panggilan: s.panggilan || s.nama || '', ortu: s.ortu || 'Bapak/Ibu', program: p ? R.LABEL[p.program] : 'Les', kode: s.kode || '', wa: s.wa || '', wa_admin: set.wa_admin ? '+' + set.wa_admin : '' }, extra || {});

@@ -227,7 +227,7 @@ Jika Anda menjalankan `isiDataDemo` (langkah A6), aplikasi berisi data contoh:
 
 Selama mode demo berlaku hal-hal berikut:
 - Ada **pita kuning "Mode Demo"** di atas aplikasi. Landing page juga menampilkan tanda kecil **"Mode uji coba"**.
-- **WhatsApp tidak pernah dikirim ke nomor contoh.** Pesan yang seharusnya untuk orang tua **dialihkan ke nomor WA admin** dengan awalan `[MODE DEMO]`, maksimal 20 pesan per hari. Dengan begitu Anda bisa melihat isi pesannya tanpa menghabiskan kuota.
+- **WhatsApp tidak pernah dikirim ke nomor contoh.** Pesan yang seharusnya untuk orang tua **dialihkan ke nomor WA admin** dengan awalan `[MODE DEMO]`, maksimal 20 pesan per hari. Dengan begitu Anda bisa melihat isi pesannya tanpa menghabiskan kuota. Untuk uji kirim ke nomor asli, tambahkan nomor di **Pengaturan → Mode Demo → Uji kirim WA ke nomor asli** (maks. 5), lalu pasang nomor itu sebagai No. WA orang tua salah satu siswa demo. Pesan ke nomor uji terkirim apa adanya.
 - Anda bebas mengubah, menghapus, dan menambah data. Jika data sudah berantakan, buka **Pengaturan → Mode Demo → Isi ulang data demo**.
 - Akun admin, identitas, logo, warna, template WA, isi landing page, dan template piagam yang Anda atur selama demo **tetap tersimpan** setelah demo berakhir.
 

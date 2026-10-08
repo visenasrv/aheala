@@ -25,7 +25,7 @@ Aturan anti-dobel:
 
 ---
 
-> 🧪 **Saat Mode Demo aktif**, pesan untuk orang tua **tidak dikirim ke nomor contoh**. Semua pesan itu dialihkan ke **nomor WA admin** dengan awalan `[MODE DEMO]`, maksimal 20 pesan per hari. Isi dulu nomor WA admin (langkah 5) agar Anda bisa melihat contoh pesannya. Setelah mode demo diakhiri, pesan kembali terkirim ke nomor orang tua yang sebenarnya.
+> 🧪 **Saat Mode Demo aktif**, pesan untuk orang tua **tidak dikirim ke nomor contoh**. Semua pesan itu dialihkan ke **nomor WA admin** dengan awalan `[MODE DEMO]`, maksimal 20 pesan per hari. Isi dulu nomor WA admin (langkah 5) agar Anda bisa melihat contoh pesannya. Setelah mode demo diakhiri, pesan kembali terkirim ke nomor orang tua yang sebenarnya. Untuk uji kirim ke nomor asli, tambahkan nomor di **Pengaturan → Mode Demo → Uji kirim WA ke nomor asli** (maks. 5), lalu pasang nomor itu sebagai No. WA orang tua salah satu siswa demo. Pesan ke nomor uji terkirim apa adanya.
 
 ## 2. Tentang paket gratis Fonnte
 

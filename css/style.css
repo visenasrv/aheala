@@ -953,3 +953,5 @@ body.public .ann { margin-top: 28px; }
 .ll-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-2); }
 .ll-item:first-child { border-top: 0; }
 .ll-item .t { flex: 1; min-width: 0; }
+.chip-x { border: 0; background: none; padding: 0 0 0 2px; margin-left: 2px; cursor: pointer; color: inherit; display: inline-flex; opacity: .7; }
+.chip-x:hover { opacity: 1; }
