@@ -82,6 +82,7 @@
     let ref = lh || p.tglMulai || String(s.createdAt || '').slice(0, 10);
     if (p.tglStatus && p.tglStatus > ref) ref = p.tglStatus;
     if (set.hadir_mulai && set.hadir_mulai > ref) ref = U.addDays(set.hadir_mulai, -1);
+    if (set.arsip_hadir_sebelum && set.arsip_hadir_sebelum > ref) ref = U.addDays(set.arsip_hadir_sebelum, -1);
     if (!U.isTgl(ref)) return null;
     let n = 0, d = U.addDays(ref, 1), g = 0;
     while (d < tgl && g++ < 200) { if (R.hariLes(d)) n++; d = U.addDays(d, 1); }

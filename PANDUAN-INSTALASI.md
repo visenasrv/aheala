@@ -256,7 +256,7 @@ Selama mode demo berlaku hal-hal berikut:
 ### D2. Urutan pengaturan yang disarankan
 | No | Menu | Yang diisi |
 |---|---|---|
-| 1 | **Pengaturan → Identitas** | Nama aplikasi, nama lembaga, Nama unit, **No. Unit** (4 digit angka, contoh `3924`; dipakai di nomor piagam, contoh `001/AHE-3924/X/2026`), **Kepala Unit** (penanda tangan kuitansi & piagam), kecamatan, desa/kelurahan, alamat (jalan, RT, nomor), logo, **gambar tanda tangan** (PNG; foto/scan di kertas putih juga bisa), dan **warna utama** |
+| 1 | **Pengaturan → Identitas** | Nama aplikasi, nama lembaga, Nama unit, **No. Unit** (4 digit angka, contoh `3924`; otomatis menjadi **nomor piagam** di semua piagam), **Kepala Unit** (penanda tangan kuitansi & piagam), kecamatan, desa/kelurahan, alamat (jalan, RT, nomor), logo, **gambar tanda tangan** (PNG; foto/scan di kertas putih juga bisa), dan **warna utama** |
 | 2 | **Pengaturan → SPP** | Tanggal jatuh tempo, **Mulai pencatatan SPP** (isi bulan ini agar bulan-bulan lama tidak dianggap menunggak), lalu **Atur tarif** |
 | 3 | **Pengaturan → Kehadiran** | **Mulai pencatatan kehadiran** (isi tanggal mulai pakai aplikasi), batas absen (bawaan 10 hari les), batas siswa per guru (bawaan 10) |
 | 4 | **Guru** | Tambah guru dan kata sandinya. Guru login dengan memilih namanya dari daftar. |
@@ -270,13 +270,23 @@ Selama mode demo berlaku hal-hal berikut:
 - **Guru:** kirim link `.../app.html` dan kata sandinya. Guru bisa mengganti sandinya sendiri di menu **Akun Saya**. Di HP, guru bisa memilih **"Tambahkan ke layar utama"** di menu browser agar aplikasi terbuka seperti app biasa.
 - **Orang tua / umum:** bagikan link utama `https://USERNAME.github.io/les-aheala/`. Pendaftaran bisa dibuka atau ditutup dari **Pengaturan → Pendaftaran**.
 
-### D4. Fitur harian yang sering dipakai (v1.2)
+### D4. Fitur harian yang sering dipakai
 - **Filter periode** (Dashboard, Kehadiran, SPP): klik tombol periode, pilih satu bulan, atau klik bulan awal lalu bulan akhir untuk rentang. Tombol cepat **Satu tahun**, **Bulan ini**, **3/6 bulan terakhir** juga tersedia.
 - **Kehadiran → Per Hari:** jumlah siswa yang diajar tiap guru pada tanggal tertentu, lengkap dengan nama siswanya.
 - **Siswa → Naik 1 Level:** muncul konfirmasi "Naikkan ke Level X?" dengan pilihan **Iya** / **Tidak**. Siswa yang baru diubah tetap tampil (ditandai) walau tidak lagi cocok dengan filter.
 - **Siswa → Lulus / Alumni:** siswa yang dituntaskan pindah ke tab ini. Lulusan Les Baca yang lanjut berhitung: centang lalu **Lanjut Berhitung**, dan siswa kembali ke tab **Siswa Les**.
 - **Landing page** menampilkan jumlah murid Les Baca, Les Berhitung, alumni, dan guru secara otomatis (bagian **Jumlah Murid** di editor Landing Page bisa diubah judulnya atau disembunyikan).
-- **Masuk dari landing page** saat masih login: halaman login tetap tampil dengan pilihan **Lanjutkan** atau **Keluar** (untuk berganti akun).
+- **Tombol Masuk di landing page** selalu membuka halaman login dan **mengakhiri sesi lama** di perangkat itu. Pengunjung tidak bisa masuk ke akun admin/guru yang lupa keluar.
+- **Keluar** (admin & guru) selalu meminta konfirmasi **Iya / Tidak**.
+- **Draf absen guru:** centangan siswa tersimpan otomatis di HP. Bila aplikasi tertutup sebelum menekan Simpan, centangan muncul lagi saat dibuka (tertulis "Draf absen dipulihkan"). Guru tetap harus menekan **Simpan Kehadiran**.
+- **Alumni sebelum aplikasi:** di **Landing Page → Jumlah Murid**, isi jumlah siswa yang lulus sebelum aplikasi dipakai. Angka ini ditambahkan ke alumni di landing page.
+
+### D5. Backup & arsip data (Pengaturan → Backup Data)
+- **Buat backup sekarang:** membuat salinan utuh seluruh database ke folder **Backup** di Google Drive (folder `Manajemen Les Ahe & Ala`). Semua backup tetap tersimpan sampai Anda menghapusnya. Tombol **Buka** membuka di Google Sheets, **Excel** mengunduh .xlsx (perlu login ke akun Google pemilik aplikasi).
+- **Backup otomatis:** pilih **Mingguan** atau **Bulanan** (bawaan). Dibuat pukul 07.00 WITA. Disimpan 6 backup otomatis terakhir; backup manual tidak pernah dihapus otomatis.
+- **Kapasitas database:** Google Sheets menampung maks. 10 juta sel per file. Bila angka sudah di atas ±60%, arsipkan data lama.
+- **Arsipkan data lama:** kehadiran guru & siswa serta riwayat WhatsApp **sampai akhir tahun yang dipilih** dipindah ke file di folder **Arsip**, lalu dihapus dari database. Backup utuh selalu dibuat lebih dulu. **Yang tetap di aplikasi:** semua siswa, alumni, guru, level, SPP, kuitansi, piagam, pengaturan, landing page, dan kehadiran tahun berjalan, sehingga aplikasi **tidak mulai dari nol**.
+- **Memulihkan dari backup:** buka file backup di Google Drive, lalu salin isi sheet yang dibutuhkan ke spreadsheet database utama dan jalankan `bersihkanCache`. (Atau ganti `SPREADSHEET_ID` di *Project Settings → Script Properties* dengan ID file backup, lalu jalankan `bersihkanCache`.)
 
 ---
 
@@ -318,7 +328,8 @@ Pilih nama fungsi di dropdown, lalu klik ▶ **Jalankan**:
 | `cekTemplate` | Melihat template piagam yang sedang aktif. |
 | `isiDataDemo` | Mengisi data contoh untuk mencoba aplikasi (hanya bila data masih kosong). Lihat D0. |
 | `akhiriModeDemo` | Mengakhiri mode demo dan mengosongkan semua data contoh. |
-| `arsipkanTahun` | Memindahkan data kehadiran tahun lalu ke spreadsheet arsip, agar database tetap ringan. Jalankan setahun sekali di bulan Januari. |
+| `backupSekarang` | Membuat backup utuh saat itu juga (sama dengan tombol di Pengaturan → Backup Data). |
+| `arsipkanTahun` | Sama dengan **Arsipkan data lama**: memindahkan kehadiran & riwayat WA sampai akhir tahun lalu ke file arsip (didahului backup utuh). |
 
 > Data boleh dilihat langsung di spreadsheet Database. Namun **jangan** mengubah nama sheet, urutan kolom, atau baris judul.
 

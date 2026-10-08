@@ -899,3 +899,14 @@ body.public .ann { margin-top: 28px; }
 .mchip.ok { background: var(--ok-50); color: var(--ok-700); border-color: #BBE5C8; }
 .mchip.no { background: var(--bad-50); color: var(--bad-700); border-color: #F7C2C2; }
 @media (max-width: 1099px) { .tbl-cards td[data-l="Per bulan"] { flex-direction: column; align-items: flex-start; } .tbl-cards td[data-l="Per bulan"] .mstrip { max-width: none; } }
+
+/* ---------- v1.3: Backup data, draf absen ---------- */
+.bk-rinci { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 16px; }
+.bk-rinci > div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--line-2); }
+.bk-rinci span { color: var(--text-2); }
+.bk-list { display: grid; }
+.bk-item { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line-2); }
+.bk-item:first-child { border-top: 0; }
+.bk-item .t { flex: 1; min-width: 0; }
+#draf-info { align-items: center; flex-wrap: wrap; }
+@media (max-width: 1099px) { .bk-utama { order: -1; } }

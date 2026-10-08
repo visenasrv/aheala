@@ -118,12 +118,14 @@
   const DESK_SEKSI = { hero: 'Foto banner, judul, slogan, poin unggulan', statistik: 'Angka murid Baca & Berhitung (otomatis)', metode: 'Kartu keunggulan metode belajar', program: 'Penjelasan program Baca & Berhitung', pengumuman: 'Otomatis dari menu Hari Libur', galeri: 'Foto dari HP atau link', video: 'Link YouTube / Facebook', lokasi: 'Alamat, jam les, peta Google Maps', kontak: 'Tombol WhatsApp & media sosial' };
   const IKON_METODE = ['book-open', 'calculator', 'heart', 'smile', 'star', 'puzzle', 'users', 'award', 'school', 'sparkles'];
   const isiSeksi = (s) => { try { return typeof s.isi === 'string' ? JSON.parse(s.isi || '{}') : (s.isi || {}); } catch (e) { return {}; } };
+  const alumniLama = () => { const sk = (D().landing || []).find((x) => x.id === 'statistik'); return sk ? Math.max(0, Math.floor(+isiSeksi(sk).alumniLama || 0)) : 0; };
+  const alumniApp = () => { const a = new Set(); R.siswaTerdaftar().forEach((s) => { if (R.programs(s.id).some((p) => p.status === 'lulus')) a.add(s.id); }); return a.size; };
   let frameSiap = false;
   const kirimPratinjau = U.debounce(() => {
     const fr = $('#lp-frame'); if (!fr || !frameSiap) return;
     const d = D(), t = U.today();
     const sp = { ahe: 0, ala: 0, alumni: 0, guru: (d.guru || []).filter((g) => !g.tglKeluar || g.tglKeluar > t).length }; const alumni = new Set();
-    R.siswaTerdaftar().forEach((s) => R.programs(s.id).forEach((p) => { if (p.status === 'aktif') sp[p.program === 'ala' ? 'ala' : 'ahe']++; if (p.status === 'lulus') alumni.add(s.id); })); sp.alumni = alumni.size;
+    R.siswaTerdaftar().forEach((s) => R.programs(s.id).forEach((p) => { if (p.status === 'aktif') sp[p.program === 'ala' ? 'ala' : 'ahe']++; if (p.status === 'lulus') alumni.add(s.id); })); sp.alumni = alumni.size + alumniLama();
     fr.contentWindow.postMessage({ type: 'ahe-preview', data: { statistik: sp, settings: d.settings, sections: d.landing, galeri: (d.galeri || []).filter((g) => g.tampil !== 'tidak'), libur: (d.libur || []).filter((l) => l.tampilLanding === 'ya' && (l.tglMasuk || l.tglSelesai) >= t) } }, location.origin);
   }, 250);
   window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.type === 'ahe-preview-ready') { frameSiap = true; kirimPratinjau(); } });
@@ -217,8 +219,16 @@
         <p class="help">${icon('info', 'ic-sm')} Daftar level (Baca 1–7; Berhitung 1–6 & 7–16) ditampilkan otomatis.</p></div>`;
       bind();
     } else if (s.id === 'statistik') {
-      el.innerHTML = `<div class="form-stack">${umum}<div class="note-box">${icon('info')}<span>Angka <b>murid Les Baca</b>, <b>murid Les Berhitung</b>, <b>alumni</b>, dan <b>guru</b> dihitung otomatis dari data siswa aktif — selalu terbaru tanpa perlu diubah manual.</span></div></div>`;
+      const nApp = alumniApp();
+      el.innerHTML = `<div class="form-stack">${umum}<div class="note-box">${icon('info')}<span>Angka <b>murid Les Baca</b>, <b>murid Les Berhitung</b>, dan <b>guru</b> dihitung otomatis dari data aplikasi — selalu terbaru.</span></div>
+        <div class="card soft card-pad"><div class="field"><label for="st-alumni">${icon('award', 'ic-sm')} Alumni sebelum memakai aplikasi</label>
+          <input class="input num" id="st-alumni" type="number" min="0" max="100000" step="1" inputmode="numeric" value="${alumniLama() || ''}" placeholder="0" style="max-width:200px">
+          <span class="help">Isi jumlah siswa yang sudah lulus sebelum aplikasi ini dipakai. Angka ini ditambahkan ke alumni yang tercatat di aplikasi.</span></div>
+          <div class="row-gap mt-12 small" id="st-hitung"></div></div></div>`;
       bind();
+      const hitung = () => { const lama = Math.max(0, Math.floor(+$('#st-alumni', el).value || 0)); $('#st-hitung', el).innerHTML = `<span class="chip">Tercatat di aplikasi: <b class="num">${nApp}</b></span><span>+</span><span class="chip">Sebelum aplikasi: <b class="num">${lama}</b></span><span>=</span><span class="chip chip-ok">Tampil di landing: <b class="num">${nApp + lama}</b> alumni</span>`; };
+      hitung();
+      $('#st-alumni', el).oninput = (e) => { const v = Math.max(0, Math.min(100000, Math.floor(+e.target.value || 0))); ubahSeksi('statistik', (z) => { const o = isiSeksi(z); o.alumniLama = v; z.isi = JSON.stringify(o); }); hitung(); };
     } else if (s.id === 'pengumuman') {
       const l = (D().libur || []).filter((z) => z.tampilLanding === 'ya' && (z.tglMasuk || z.tglSelesai) >= U.today());
       el.innerHTML = `<div class="note-box">${icon('info')}<span>Bagian ini otomatis menampilkan libur yang dicentang "Tampilkan di landing page". ${l.length ? 'Saat ini: <b>' + esc(l[0].keterangan) + '</b>.' : 'Saat ini tidak ada.'} <a href="#/libur">Kelola hari libur</a></span></div>`;
@@ -333,11 +343,11 @@
     render(view, params) {
       const demo = (D().settings || {}).mode_demo === 'ya';
       const tab = params[0] === 'demo' && !demo ? 'identitas' : (params[0] || 'identitas');
-      view.innerHTML = `<div class="page-head"><div><h1>Pengaturan</h1><p>Identitas lembaga, pendaftaran, SPP, kehadiran, WhatsApp (Fonnte), akun, dan piagam.</p></div></div>
-        <div class="tabs mb-16">${[['identitas', 'Identitas', 'palette'], ['pendaftaran', 'Pendaftaran', 'user-plus'], ['spp', 'SPP', 'wallet'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['wa', 'WhatsApp', 'message-circle'], ['akun', 'Akun', 'key-round'], ['piagam', 'Piagam', 'award']].concat(demo ? [['demo', 'Mode Demo', 'sparkles']] : [])
+      view.innerHTML = `<div class="page-head"><div><h1>Pengaturan</h1><p>Identitas lembaga, pendaftaran, SPP, kehadiran, WhatsApp (Fonnte), akun, piagam, dan backup data.</p></div></div>
+        <div class="tabs mb-16">${[['identitas', 'Identitas', 'palette'], ['pendaftaran', 'Pendaftaran', 'user-plus'], ['spp', 'SPP', 'wallet'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['wa', 'WhatsApp', 'message-circle'], ['akun', 'Akun', 'key-round'], ['piagam', 'Piagam', 'award'], ['backup', 'Backup Data', 'database']].concat(demo ? [['demo', 'Mode Demo', 'sparkles']] : [])
           .map(([k, l, ic]) => `<a class="tab ${tab === k ? 'on' : ''}" href="#/pengaturan/${k}">${icon(ic, 'ic-sm')} ${l}</a>`).join('')}</div><div id="set-isi"></div>`;
       const el = $('#set-isi');
-      ({ identitas: setIdentitas, pendaftaran: setDaftar, spp: setSpp, kehadiran: setHadir, wa: setWa, akun: setAkun, demo: setDemo, piagam: (x) => window.Piagam ? Piagam.pengaturan(x) : (x.innerHTML = '') }[tab] || setIdentitas)(el);
+      ({ identitas: setIdentitas, pendaftaran: setDaftar, spp: setSpp, kehadiran: setHadir, wa: setWa, akun: setAkun, demo: setDemo, backup: setBackup, piagam: (x) => window.Piagam ? Piagam.pengaturan(x) : (x.innerHTML = '') }[tab] || setIdentitas)(el);
     }
   });
   function simpanSet(values, label) {
@@ -353,7 +363,7 @@
         ${fld('nama_aplikasi', 'Nama aplikasi', s.nama_aplikasi, 'maxlength="60"', 'Tampil di header, login, dan judul halaman')}
         ${fld('nama_lembaga', 'Nama lembaga resmi', s.nama_lembaga, 'maxlength="120"', 'Dipakai di kuitansi, rekap PDF, dan pesan WA')}
         ${fld('slogan', 'Slogan singkat', s.slogan)}
-        <div class="grid-2">${fld('nama_unit', 'Nama unit', s.nama_unit, 'maxlength="100"', 'Menjadi “Unit Pembelajaran” di piagam Ahe')}${fld('no_unit', 'No. Unit (4 digit)', s.no_unit, 'maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="Contoh: 3924"', '<span id="id-nomor">Dipakai di nomor piagam</span>')}</div>
+        <div class="grid-2">${fld('nama_unit', 'Nama unit', s.nama_unit, 'maxlength="100"', 'Menjadi “Unit Pembelajaran” di piagam Ahe')}${fld('no_unit', 'No. Unit (4 digit)', s.no_unit, 'maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="Contoh: 3924"', '<span id="id-nomor">Menjadi nomor piagam</span>')}</div>
         ${fld('kepala_unit', 'Kepala Unit', s.kepala_unit || s.kuitansi_penerima, 'maxlength="100"', 'Penanda tangan kuitansi & nama Kepala Unit di piagam')}
         <div class="grid-2">${fld('kecamatan', 'Kecamatan', s.kecamatan, 'maxlength="80"')}${fld('desa', 'Desa / Kelurahan', s.desa, 'maxlength="80"', 'Menjadi “Desa / Kelurahan” di piagam Ala')}</div>
         <div class="field"><label>Alamat</label><textarea class="input" name="alamat" rows="2" maxlength="200" placeholder="Contoh: Jl. Pendidikan No. 45, RT 05">${esc(s.alamat || '')}</textarea><span class="help">Isi nama jalan, RT, dan nomor. Desa & kecamatan diambil dari kolom di atas.</span></div>
@@ -400,7 +410,7 @@
       catch (e) { U.toast(e.message, 'bad', 7000); }
     };
     const td = $('#ttd-del'); if (td) td.onclick = async () => { if (await U.confirm({ title: 'Hapus tanda tangan?', text: 'Kuitansi akan tampil tanpa gambar tanda tangan.', ok: 'Hapus', danger: true })) { simpanSet({ ttd_data: '' }, 'Tanda tangan dihapus'); A.refresh(true); } };
-    const nomorContoh = () => { const el = $('#id-nomor'); if (!el) return; const nu = $('#fid').no_unit.value.trim(); el.innerHTML = 'Contoh nomor piagam: <b class="num">' + esc(Piagam.formatNomor(1, 'ahe', U.today(), nu)) + '</b>'; };
+    const nomorContoh = () => { const el = $('#id-nomor'); if (!el) return; const nu = $('#fid').no_unit.value.trim(); el.innerHTML = nu.length === 4 ? 'Nomor piagam: <b class="num">' + esc(Piagam.formatNomor(1, 'ahe', U.today(), nu)) + '</b> (otomatis di semua piagam)' : 'Menjadi nomor piagam (otomatis di semua piagam)'; };
     $('#fid').no_unit.addEventListener('input', (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); if (v !== e.target.value) e.target.value = v; nomorContoh(); }); nomorContoh();
   }
   function setDaftar(el) {
@@ -507,6 +517,99 @@
     $$('[data-ulang]').forEach((b) => b.onclick = () => { const l = (D().logWA || []).find((x) => x.id === b.dataset.ulang); if (l) A.kirimWA({ target: l.tujuan, pesan: l.pesan, jenis: l.jenis, siswaId: l.siswaId, periode: l.periode }); });
   }
   // ---------------------------------------------------------------- Mode demo
+  // ---------------- Backup & arsip data ----------------
+  const tglJam = (iso) => iso ? U.tgl(String(iso).slice(0, 10)) + ' ' + String(iso).slice(11, 16) : '-';
+  const xlsxUrl = (b) => 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(b.id) + '/export?format=xlsx';
+  const NAMA_TABEL = { Hadir_Siswa: 'Kehadiran siswa', Hadir_Guru: 'Kehadiran guru', Log_WA: 'Riwayat WhatsApp', Siswa: 'Siswa', Program_Siswa: 'Program siswa', SPP: 'Pembayaran SPP', Kuitansi: 'Kuitansi', Riwayat_Level: 'Riwayat level', Foto: 'Foto siswa/guru', Galeri: 'Galeri' };
+  function setBackup(el) {
+    const ui = A.ui.backup = A.ui.backup || { st: null, muat: false };
+    const muat = async () => {
+      ui.muat = true;
+      try { ui.st = await U.api('backupStatus', { token: A.S.token }, { timeout: 90000 }); ui.galat = ''; }
+      catch (e) { ui.galat = e.message; }
+      ui.muat = false;
+      if (location.hash.indexOf('#/pengaturan/backup') === 0) gambar();
+    };
+    const li = (ic, cls, t) => `<li><span class="ic" style="color:var(--${cls})">${icon(ic, 'ic-sm')}</span><span>${t}</span></li>`;
+    function gambar() {
+      const st = ui.st;
+      if (!st) {
+        el.innerHTML = `<div class="card">${ui.galat ? A.kosong('triangle-alert', 'Status backup gagal dimuat', esc(ui.galat), `<button class="btn btn-soft" id="bk-ulang">${icon('refresh-cw')} Coba lagi</button>`) : `<div class="empty">${icon('loader-circle', 'ic-xl spin')}<p>Memeriksa backup & kapasitas database…</p></div>`}</div>`;
+        const u = $('#bk-ulang'); if (u) u.onclick = () => { ui.galat = ''; gambar(); muat(); };
+        return;
+      }
+      const k = st.kapasitas, pers = Math.min(100, k.persen);
+      const warnaBar = pers >= 80 ? 'bad' : pers >= 60 ? 'warn' : 'ok';
+      const thnKini = +U.today().slice(0, 4);
+      const thnArsip = st.tahunHadir.map((x) => x).filter((x) => +x.tahun < thnKini);
+      const besar = k.rinci.filter((r) => NAMA_TABEL[r.nama]).sort((a, b) => b.baris - a.baris).slice(0, 6);
+      el.innerHTML = `<div class="split half"><div class="stack">
+        <div class="card card-pad"><div class="row-gap mb-12"><span class="icon-dot">${icon('database')}</span><div style="flex:1"><h3>Kapasitas database</h3><div class="small muted">Google Sheets menampung maks. 10 juta sel per file</div></div><b class="num" style="font-size:22px">${String(k.persen).replace('.', ',')}%</b></div>
+          <div class="bar ${warnaBar}"><i style="width:${Math.max(1, pers)}%"></i></div>
+          <div class="small muted mt-8">${k.sel.toLocaleString('id-ID')} dari ${k.batas.toLocaleString('id-ID')} sel terpakai. ${pers >= 60 ? '<b>Disarankan mengarsipkan data lama.</b>' : 'Masih lega.'}</div>
+          <div class="bk-rinci mt-12">${besar.map((r) => `<div><span>${esc(NAMA_TABEL[r.nama])}</span><b class="num">${r.baris.toLocaleString('id-ID')} baris</b></div>`).join('')}</div></div>
+        <div class="card card-pad"><h3 class="mb-12">${icon('history')} Backup otomatis</h3>
+          <div class="seg full" id="bk-oto">${[['tidak', 'Mati'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan']].map(([v, l]) => `<button class="${st.otomatis === v ? 'on' : ''}" data-oto="${v}">${l}</button>`).join('')}</div>
+          <p class="help mt-8">${icon('info', 'ic-sm')}<span>Dibuat otomatis pukul 07.00 WITA. Disimpan <b>${st.simpanOtomatis}</b> backup otomatis terakhir; backup manual tidak pernah dihapus otomatis.</span></p></div>
+        <div class="card card-pad"><div class="row-gap mb-12"><span class="icon-dot sun">${icon('archive')}</span><div style="flex:1"><h3>Arsipkan data lama</h3><div class="small muted">Saat database mulai penuh — data aplikasi <b>tidak mulai dari nol</b></div></div></div>
+          <div class="tiny strong muted mb-8" style="letter-spacing:.06em">DIPINDAH KE FILE ARSIP</div>
+          <ul class="demo-list" style="margin-bottom:16px">${li('archive', 'sun', 'Kehadiran guru & siswa sampai akhir tahun yang dipilih')}${li('archive', 'sun', 'Riwayat pengiriman WhatsApp sampai akhir tahun itu')}</ul>
+          <div class="tiny strong muted mb-8" style="letter-spacing:.06em">TETAP DI APLIKASI</div>
+          <ul class="demo-list" style="margin-bottom:18px">${li('check', 'ok-700', 'Semua siswa, alumni, guru, level & riwayat level')}${li('check', 'ok-700', 'Pembayaran SPP & kuitansi (link kuitansi orang tua tetap berlaku)')}${li('check', 'ok-700', 'Piagam, pengaturan, landing page, foto')}${li('check', 'ok-700', 'Kehadiran tahun berjalan')}</ul>
+          ${thnArsip.length ? `<div class="row-gap"><select class="input" id="bk-tahun" style="flex:1">${thnArsip.slice().reverse().map((x) => `<option value="${esc(x.tahun)}">Sampai akhir ${esc(x.tahun)} · ${x.baris.toLocaleString('id-ID')} data</option>`).join('')}</select><button class="btn btn-accent" id="bk-arsip">${icon('archive')} Arsipkan</button></div>
+            <p class="help mt-8">${icon('shield-check', 'ic-sm')}<span>Sebelum mengarsipkan, aplikasi selalu membuat backup utuh lebih dulu.</span></p>`
+          : `<div class="note-box">${icon('circle-check')}<span>Belum ada data tahun lalu yang bisa diarsipkan. Kehadiran tahun berjalan (${thnKini}) selalu tetap di aplikasi.</span></div>`}
+          ${st.arsipSebelum ? `<p class="tiny muted mt-12">Arsip terakhir ${esc(tglJam(st.arsipTerakhir))} — kehadiran sebelum ${esc(U.tgl(st.arsipSebelum))} ada di folder <b>Arsip</b> Google Drive.</p>` : ''}</div>
+      </div>
+      <div class="stack bk-utama">
+        <div class="card card-pad"><div class="row-gap mb-12"><span class="icon-dot ala">${icon('save')}</span><div style="flex:1"><h3>Backup sekarang</h3><div class="small muted">Salinan utuh seluruh data ke Google Drive Anda</div></div></div>
+          <button class="btn btn-primary btn-lg btn-block" id="bk-buat">${icon('save')} Buat backup sekarang</button>
+          <div class="row-gap mt-12 small"><span class="muted">Backup terakhir: <b>${esc(tglJam(st.terakhir))}</b></span><span class="spacer"></span>${st.folderUrl ? `<a href="${esc(st.folderUrl)}" target="_blank" rel="noopener" class="strong">${icon('external-link', 'ic-sm')} Buka folder Backup</a>` : ''}</div></div>
+        <div class="card"><div class="card-head"><h3>${icon('folder-sync')} Daftar backup</h3><span class="chip">${st.daftar.length} file</span></div>
+          ${st.daftar.length ? `<div class="bk-list">${st.daftar.map((b) => `<div class="bk-item"><span class="icon-dot sm ${b.jenis === 'otomatis' ? '' : b.jenis === 'arsip' ? 'sun' : 'ala'}">${icon(b.jenis === 'arsip' ? 'archive' : b.jenis === 'otomatis' ? 'history' : 'save')}</span>
+              <div class="t"><b>${esc(tglJam(b.waktu))}</b><div class="tiny muted">${{ manual: 'Backup manual', otomatis: 'Backup otomatis', arsip: 'Backup sebelum arsip' }[b.jenis]}</div></div>
+              <a class="btn btn-light btn-sm" href="${esc(b.url)}" target="_blank" rel="noopener" title="Buka di Google Sheets">${icon('external-link', 'ic-sm')}<span class="d-only"> Buka</span></a>
+              <a class="btn btn-light btn-sm" href="${esc(xlsxUrl(b))}" target="_blank" rel="noopener" title="Unduh sebagai Excel">${icon('download', 'ic-sm')}<span class="d-only"> Excel</span></a>
+              <button class="btn btn-danger-ghost btn-icon btn-sm" data-hapus-bk="${esc(b.id)}" aria-label="Hapus backup">${icon('trash-2', 'ic-sm')}</button></div>`).join('')}</div>`
+          : A.kosong('database', 'Belum ada backup', 'Tekan <b>Buat backup sekarang</b> untuk membuat salinan pertama.')}
+          <div class="card-body" style="border-top:1px solid var(--line-2)"><p class="tiny muted">${icon('info', 'ic-sm')} Tombol <b>Buka</b> & <b>Excel</b> memerlukan login ke akun Google pemilik aplikasi. Untuk memulihkan, buka file backup lalu salin datanya kembali, atau hubungi pembuat aplikasi.</p></div></div>
+      </div></div>`;
+      $$('[data-oto]', el).forEach((b) => b.onclick = () => { st.otomatis = b.dataset.oto; simpanSet({ backup_otomatis: b.dataset.oto }, 'Backup otomatis'); gambar(); });
+      $('#bk-buat').onclick = async (e) => {
+        const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = `${icon('loader-circle', 'spin')} Membuat backup… (±10–30 detik)`;
+        try { const r = await U.api('backup', { token: A.S.token }, { timeout: 180000 }); ui.st = r.status; U.toast('Backup berhasil dibuat'); }
+        catch (err) { U.toast('Backup gagal: ' + err.message, 'bad', 8000); }
+        gambar();
+      };
+      $$('[data-hapus-bk]', el).forEach((b) => b.onclick = async () => {
+        const it = st.daftar.find((x) => x.id === b.dataset.hapusBk);
+        if (!(await U.confirm({ title: 'Hapus backup ini?', text: 'Backup <b>' + esc(tglJam(it.waktu)) + '</b> dipindah ke Sampah Google Drive (masih bisa dipulihkan dari Sampah selama 30 hari).', ok: 'Hapus', danger: true }))) return;
+        try { ui.st = await U.api('hapusBackup', { token: A.S.token, id: it.id }); U.toast('Backup dihapus'); } catch (err) { U.toast(err.message, 'bad'); }
+        gambar();
+      });
+      const ar = $('#bk-arsip');
+      if (ar) ar.onclick = async () => {
+        const th = $('#bk-tahun').value;
+        const ok = await U.confirm({ title: 'Arsipkan data sampai akhir ' + th + '?', danger: true, ketik: 'arsipkan', ok: 'Arsipkan sekarang',
+          text: 'Kehadiran guru & siswa serta riwayat WhatsApp <b>sampai 31 Desember ' + esc(th) + '</b> dipindah ke file arsip di Google Drive, lalu dihapus dari database aplikasi. Backup utuh dibuat lebih dulu. Siswa, guru, SPP, kuitansi, dan piagam tetap ada.' });
+        if (!ok) return;
+        ar.disabled = true; ar.innerHTML = `${icon('loader-circle', 'spin')} Mengarsipkan…`;
+        try {
+          const r = await U.api('arsipkan', { token: A.S.token, tahun: th }, { timeout: 330000 });
+          ui.st = r.status;
+          const m = U.modal({ title: 'Arsip selesai', icon: 'circle-check', iconCls: 'ok',
+            body: `<ul class="demo-list">${li('archive', 'sun', '<b>' + r.hadirSiswa.toLocaleString('id-ID') + '</b> kehadiran siswa, <b>' + r.hadirGuru.toLocaleString('id-ID') + '</b> kehadiran guru, <b>' + r.logWA.toLocaleString('id-ID') + '</b> riwayat WA dipindah')}${li('save', 'ok-700', 'Backup utuh dibuat: ' + esc(tglJam(r.backup.waktu)))}${li('check', 'ok-700', 'Data siswa, guru, SPP, dan piagam tetap di aplikasi')}</ul>
+              ${r.arsipUrl ? `<a class="btn btn-soft mt-16" href="${esc(r.arsipUrl)}" target="_blank" rel="noopener">${icon('external-link')} Buka file arsip</a>` : ''}`,
+            foot: `<button class="btn btn-primary" data-tutup>Selesai</button>` });
+          m.$('[data-tutup]').onclick = () => m.close();
+          A.segarkan();
+        } catch (err) { U.toast('Arsip gagal: ' + err.message, 'bad', 9000); }
+        gambar();
+      };
+    }
+    gambar();
+    if (!ui.muat) muat();
+  }
   function setDemo(el) {
     const s = D().settings;
     const li = (ic, cls, t) => `<li><span class="ic" style="color:var(--${cls})">${icon(ic, 'ic-sm')}</span><span>${t}</span></li>`;

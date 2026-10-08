@@ -150,23 +150,9 @@
   };
 
   // ---------------- Nomor berikutnya ----------------
-  // Nomor piagam otomatis dari No. Unit (Pengaturan → Identitas): 001/AHE-<No. Unit>/<bulan romawi>/<tahun>
-  const ROMAWI = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-  P.formatNomor = (n, jenis, tgl, noUnit) => {
-    const t = U.isTgl(tgl) ? tgl : U.today();
-    const kode = String(jenis || 'ahe').toUpperCase() + (noUnit ? '-' + String(noUnit).trim() : '');
-    return String(n).padStart(3, '0') + '/' + kode + '/' + ROMAWI[+t.slice(5, 7) - 1] + '/' + t.slice(0, 4);
-  };
-  P.nomorOtomatis = (jenis, tgl, kecualiId) => {
-    const t = U.isTgl(tgl) ? tgl : U.today();
-    let maks = 0;
-    (D().piagam[jenis] || []).forEach((r) => {
-      if (r.id === kecualiId) return;
-      const m = String(r.nomor || '').match(/^(\d+)\/.*\/(\d{4})$/);
-      if (m && m[2] === t.slice(0, 4) && +m[1] > maks) maks = +m[1];
-    });
-    return P.formatNomor(maks + 1, jenis, t, D().settings.no_unit);
-  };
+  // Nomor piagam = No. Unit (4 digit, Pengaturan → Identitas), sama untuk semua piagam. Contoh: 3924
+  P.formatNomor = (n, jenis, tgl, noUnit) => String(noUnit || '').trim();
+  P.nomorOtomatis = () => P.formatNomor(0, '', '', (D().settings || {}).no_unit);
   P.nomorBerikut = (nomor) => String(nomor || '').replace(/\d+/, (m) => String(+m + 1).padStart(m.length, '0'));
 
   // ======================================================================
@@ -220,7 +206,7 @@
       const dr = U.ls.get(DRAFT(jenis), null);
       const pakaiDraf = dr && (s ? dr.siswaId === s.id : !dr.siswaId);
       const tgl = U.today();
-      rec = pakaiDraf ? dr : { nomor: P.nomorOtomatis(jenis, tgl), kepala: set.kepala_unit || '', tglLulus: tgl, _nomorAuto: true };
+      rec = pakaiDraf ? Object.assign({}, dr, dr._nomorAuto ? { nomor: P.nomorOtomatis(jenis, tgl) } : {}) : { nomor: P.nomorOtomatis(jenis, tgl), kepala: set.kepala_unit || '', tglLulus: tgl, _nomorAuto: true };
       if (!pakaiDraf) {
         if (jenis === 'ahe') rec.unit = set.nama_unit || ''; else rec.desa = set.desa || '';
         if (s) {
@@ -242,7 +228,7 @@
       <form class="form-stack" id="fpg" autocomplete="off">${fields.map(([k, l, req]) => `<div class="field"><label>${l}${req ? '<span class="req">*</span>' : ''}</label>${
         k === 'kelompok' ? `<select class="input" name="kelompok">${KEL.map((x) => `<option ${rec.kelompok === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`
         : k === 'tglLulus' ? `<input class="input" type="date" name="tglLulus" value="${esc(rec.tglLulus || U.today())}">`
-        : `<input class="input" name="${k}" value="${esc(rec[k] || '')}" maxlength="150">`}</div>`).join('')}
+        : `<input class="input" name="${k}" value="${esc(rec[k] || '')}" maxlength="150">`}${k === 'nomor' ? `<span class="help">${icon('info', 'ic-sm')} ${set.no_unit ? 'Otomatis dari No. Unit (' + esc(set.no_unit) + ')' : 'Isi <a href="#/pengaturan/identitas">No. Unit</a> agar nomor terisi otomatis'}</span>` : ''}</div>`).join('')}
         <div class="row-gap"><a class="btn btn-light btn-sm" href="#/pengaturan/piagam?kal=${jenis}&dari=buat&kembali=${encodeURIComponent(location.hash)}" id="pg-atur">${icon('move')} Atur Posisi Teks</a><span class="spacer"></span>${edit ? `<a class="btn btn-light" href="#/piagam/hasil/${jenis}/${rec.id}">Batal</a>` : ''}<button class="btn btn-primary btn-lg" type="submit" id="pg-simpan">${icon('save')} Simpan & Lihat Hasil</button></div></form></div>
       <div class="card card-pad" style="align-self:start;position:sticky;top:80px"><div class="row-gap mb-12"><h4 style="flex:1">${icon('eye')} Pratinjau langsung</h4><span class="chip" id="pg-tpl">A4 landscape</span></div><div class="canvas-wrap"><canvas id="pg-cv"></canvas></div></div></div>`;
     const f = $('#fpg'), cv = $('#pg-cv');
@@ -397,7 +383,7 @@
   }
   function contohData(j, mode) {
     const s = D().settings;
-    if (mode === 'panjang') return { nomor: '999/AHE-SGT/XII/2026-UJI-PANJANG', nama: 'Muhammad Abdurrahman Al-Fatih Wicaksono Saputra', ttl: 'Sangatta Selatan Kutai Timur, 28 September 2019', unit: 'Unit Pembelajaran Teluk Lingga Sangatta Utara', kelompok: R.KELOMPOK.kaliBagi, desa: 'Swarga Bara Sangatta Utara', tglLulus: '2026-09-28', kepala: 'Hj. Siti Rahmawati Nurhaliza, S.Pd., M.Pd.' };
+    if (mode === 'panjang') return { nomor: '3924', nama: 'Muhammad Abdurrahman Al-Fatih Wicaksono Saputra', ttl: 'Sangatta Selatan Kutai Timur, 28 September 2019', unit: 'Unit Pembelajaran Teluk Lingga Sangatta Utara', kelompok: R.KELOMPOK.kaliBagi, desa: 'Swarga Bara Sangatta Utara', tglLulus: '2026-09-28', kepala: 'Hj. Siti Rahmawati Nurhaliza, S.Pd., M.Pd.' };
     if (mode === 'terakhir') { const l = (D().piagam[j] || []).slice(-1)[0]; if (l) return l; }
     if (mode === 'form') { const dr = U.ls.get(DRAFT(j), null); if (dr) return dr; }
     return { nomor: P.nomorOtomatis(j, U.today()), nama: 'Aisyah Putri Ramadhani', ttl: 'Sangatta, 5 Maret 2019', unit: s.nama_unit || 'Unit Sangatta', kelompok: R.KELOMPOK.tambahKurang, desa: s.desa || 'Teluk Lingga', tglLulus: U.today(), kepala: s.kepala_unit || 'Nama Kepala Unit' };

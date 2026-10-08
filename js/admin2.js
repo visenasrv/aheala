@@ -156,6 +156,7 @@
         <div class="actions">${tab !== 'hari' && tab !== 'koreksi' ? U.tombolPeriode('h-per', ui.dari, ui.sampai) : ''}
           ${tab !== 'koreksi' && tab !== 'hari' ? `<button class="btn btn-light btn-sm" data-ex="xlsx" style="color:#15803D">${icon('file-spreadsheet')} Excel</button><button class="btn btn-light btn-sm" data-ex="pdf" style="color:var(--bad-700)">${icon('file-text')} PDF</button>` : ''}</div></div>
         <div class="utabs mb-16">${[['hari', 'Per Hari', 'calendar'], ['guru', 'Rekap Guru', 'users'], ['khusus', 'Guru > ' + ambang + ' Siswa/Hari', 'star'], ['siswa', 'Rekap Siswa', 'graduation-cap'], ['koreksi', 'Koreksi', 'square-pen']].map(([k, l, ic]) => `<a class="utab ${tab === k ? 'on' : ''}" href="#/kehadiran/${k}">${icon(ic)} ${l}</a>`).join('')}</div>
+        ${d.settings.arsip_hadir_sebelum && tab !== 'koreksi' && (tab === 'hari' ? (ui.hTgl || U.today()) < d.settings.arsip_hadir_sebelum : ui.dari + '-01' < d.settings.arsip_hadir_sebelum) ? `<div class="note-box warn mb-16">${icon('archive')}<span>Kehadiran sebelum <b>${esc(U.tgl(d.settings.arsip_hadir_sebelum))}</b> sudah diarsipkan ke Google Drive. Lihat <a href="#/pengaturan/backup" style="font-weight:700">Pengaturan → Backup Data</a>.</span></div>` : ''}
         <div id="h-isi"><div class="stack"><div class="sk" style="height:110px"></div><div class="sk" style="height:300px"></div></div></div>`;
       const hp = $('#h-per'); if (hp) hp.onclick = async () => { const r = await U.pilihPeriode({ dari: ui.dari, sampai: ui.sampai, max: U.ymNow().slice(0, 4) + '-12', min: '2020-01' }); if (r) { ui.dari = r.dari; ui.sampai = r.sampai; ui.bulan = r.sampai > U.ymNow() ? (r.dari > U.ymNow() ? r.dari : U.ymNow()) : r.sampai; A.render(); } };
       $$('[data-ex]').forEach((b) => b.onclick = () => ekspor(tab, b.dataset.ex));
@@ -186,10 +187,10 @@
     const hl = bulanRentang(ui).reduce((a, b) => a + R.hariLesBulan(b).length, 0);
     el.innerHTML = `<div class="stats four mb-16"><div class="card stat"><div class="top"><span class="lbl">Hari les</span><span class="icon-dot sm">${icon('calendar')}</span></div><div class="val">${hl}</div><div class="sub">${esc(U.bulan(ui.dari))}${ui.dari !== ui.sampai ? ' – ' + esc(U.bulan(ui.sampai)) : ''}</div></div>
       <div class="card stat"><div class="top"><span class="lbl">Total hari mengajar</span><span class="icon-dot sm ala">${icon('calendar-check')}</span></div><div class="val">${tot.hari}</div><div class="sub">semua guru</div></div>
-      <div class="card stat"><div class="top"><span class="lbl">Total siswa diajar</span><span class="icon-dot sm acc">${icon('users')}</span></div><div class="val">${tot.siswa}</div><div class="sub">${tot.hari ? (tot.siswa / tot.hari).toFixed(1) + ' / hari' : '-'}</div></div>
+      <div class="card stat"><div class="top"><span class="lbl">Total siswa diajar</span><span class="icon-dot sm acc">${icon('users')}</span></div><div class="val">${tot.siswa}</div><div class="sub">${tot.hari ? Math.round(tot.siswa / tot.hari) + ' / hari' : '-'}</div></div>
       <div class="card stat"><div class="top"><span class="lbl">Guru aktif</span><span class="icon-dot sm sun">${icon('star')}</span></div><div class="val">${(D().guru || []).filter(guruAktif).length}</div><div class="sub">saat ini</div></div></div>
       <div class="card">${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th>Bulan</th><th>Guru</th><th class="t-right">Hari mengajar</th><th class="t-right">Total siswa</th><th class="t-right">Rata-rata/hari</th><th class="t-right">Hari &gt; ${+D().settings.ambang_siswa_banyak || 10} siswa</th></tr></thead><tbody>
-        ${rows.map((r) => `<tr><td data-l="Bulan">${U.bulan(r.ym)}</td><td class="t-main"><div class="person">${U.avatar(r.nama, r.guruId, 'av-sm')}<b>${esc(r.nama)}</b></div></td><td data-l="Hari" class="t-right"><b>${r.hari}</b> <span class="muted small">/ ${R.hariLesBulan(r.ym).length}</span></td><td data-l="Siswa" class="t-right">${r.siswa}</td><td data-l="Rata-rata" class="t-right">${(r.siswa / r.hari).toFixed(1)}</td><td data-l="> ambang" class="t-right">${r.banyak ? `<span class="chip chip-acc">${icon('star')} ${r.banyak} hari</span>` : '0'}</td></tr>`).join('')}
+        ${rows.map((r) => `<tr><td data-l="Bulan">${U.bulan(r.ym)}</td><td class="t-main"><div class="person">${U.avatar(r.nama, r.guruId, 'av-sm')}<b>${esc(r.nama)}</b></div></td><td data-l="Hari" class="t-right"><b>${r.hari}</b> <span class="muted small">/ ${R.hariLesBulan(r.ym).length}</span></td><td data-l="Siswa" class="t-right">${r.siswa}</td><td data-l="Rata-rata" class="t-right">${Math.round(r.siswa / r.hari)}</td><td data-l="> ambang" class="t-right">${r.banyak ? `<span class="chip chip-acc">${icon('star')} ${r.banyak} hari</span>` : '0'}</td></tr>`).join('')}
       </tbody></table></div>` : A.kosong('calendar', 'Belum ada catatan mengajar', 'Data muncul setelah guru menyimpan absen.')}</div>`;
   }
   function rekapKhusus(el, data) {
@@ -275,7 +276,7 @@
       box.innerHTML = `<div class="stats four mb-16">
           <div class="card stat"><div class="top"><span class="lbl">Siswa hadir</span><span class="icon-dot sm ala">${icon('graduation-cap')}</span></div><div class="val">${siswa.length}</div><div class="sub">dari ${R.siswaTerdaftar().filter((s) => R.status(s.id) === 'aktif').length} siswa aktif</div></div>
           <div class="card stat"><div class="top"><span class="lbl">Guru mengajar</span><span class="icon-dot sm">${icon('users')}</span></div><div class="val">${mengajar.length}</div><div class="sub">dari ${guruAktifHari.length} guru aktif</div></div>
-          <div class="card stat"><div class="top"><span class="lbl">Rata-rata</span><span class="icon-dot sm acc">${icon('chart-column')}</span></div><div class="val">${mengajar.length ? (siswa.length / mengajar.length).toFixed(1).replace('.', ',') : 0}</div><div class="sub">siswa per guru</div></div>
+          <div class="card stat"><div class="top"><span class="lbl">Rata-rata</span><span class="icon-dot sm acc">${icon('chart-column')}</span></div><div class="val">${mengajar.length ? Math.round(siswa.length / mengajar.length) : 0}</div><div class="sub">siswa per guru</div></div>
           <div class="card stat"><div class="top"><span class="lbl">Guru &gt; ${ambang} siswa</span><span class="icon-dot sm sun">${icon('star')}</span></div><div class="val">${mengajar.filter((id) => per[id].length > ambang).length}</div><div class="sub">pada hari ini</div></div></div>
         <div class="ph-grid">${ids.map((id) => {
           const l = per[id] || []; const n = l.length;
@@ -349,7 +350,7 @@
       if (tab === 'guru') {
         const rows = hitungGuru(data, ui);
         lembar = bulanRentang(ui).map((b) => ({ nama: U.bulan(b), judul: 'Rekap Kehadiran Guru — ' + U.bulan(b), head: ['No', 'Nama Guru', 'Hari Mengajar', 'Hari Les', 'Total Siswa', 'Rata-rata/Hari', 'Hari > ' + ambang + ' Siswa'],
-          body: rows.filter((r) => r.ym === b).map((r, i) => [i + 1, r.nama, r.hari, R.hariLesBulan(b).length, r.siswa, +(r.siswa / r.hari).toFixed(1), r.banyak]) }));
+          body: rows.filter((r) => r.ym === b).map((r, i) => [i + 1, r.nama, r.hari, R.hariLesBulan(b).length, r.siswa, Math.round(r.siswa / r.hari), r.banyak]) }));
       } else if (tab === 'khusus') {
         const rows = data.hadirGuru.filter((h) => +h.jumlahSiswa > ambang).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
         lembar = [{ nama: 'Guru lebih ' + ambang, judul: 'Rekap Guru Mengajar Lebih dari ' + ambang + ' Siswa — ' + judulRentang, head: ['No', 'Tanggal', 'Hari', 'Nama Guru', 'Jumlah Siswa'],

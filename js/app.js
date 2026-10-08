@@ -116,13 +116,15 @@
     if (!A.S.token) return;
     if (OB.q.length || OB.sending) { A._perluSegar = true; jadwalKirim(10); return; }
     try {
-      const d = await U.api('bootstrap', { token: A.S.token });
+      const t = A.S.token;
+      const d = await U.api('bootstrap', { token: t });
+      if (A.S.token !== t) return; // sudah keluar / berganti akun
       if (OB.q.length) { A._perluSegar = true; return; }
       terimaData(d);
       A.S.user = d.user;
       A.refresh(true);
     } catch (e) {
-      if (e.kode === 'AUTH') sesiHabis();
+      if (e.kode === 'AUTH' && A.S.token) sesiHabis();
     }
   };
   document.addEventListener('visibilitychange', () => {
@@ -139,20 +141,33 @@
     tampilLogin();
   }
   A.keluar = async () => {
+    const nama = (A.S.user && (A.S.user.panggilan || A.S.user.nama)) || '';
+    const draf = A.S.role === 'guru' && A.drafAbsen && A.drafAbsen.ada();
+    const ok = await U.confirm({
+      title: 'Keluar dari aplikasi?',
+      text: 'Anda akan keluar dari akun <b>' + esc(A.S.role === 'admin' ? 'Admin' : 'Guru') + (nama ? ' · ' + esc(nama) : '') + '</b>. Untuk masuk lagi diperlukan kata sandi.' +
+        (draf ? '<br><br>Centangan absen yang belum disimpan tetap aman sebagai <b>draf</b> di perangkat ini.' : ''),
+      ok: 'Iya, keluar', batal: 'Tidak'
+    });
+    if (!ok) return;
     if (OB.q.length) {
       U.toast('Mengirim perubahan terakhir…', 'info');
       await kirimBatch();
       if (OB.q.length && !(await U.confirm({ title: 'Masih ada perubahan belum terkirim', text: 'Ada ' + OB.q.length + ' perubahan yang belum terkirim ke server. Keluar sekarang akan menyimpannya di perangkat ini dan mengirimnya setelah Anda masuk lagi.', ok: 'Tetap keluar' }))) return;
     }
-    const t = A.S.token;
-    if (t) U.api('logout', { token: t }).catch(() => { });
-    U.ls.del(LS_SESI);
-    if (A.S.role) U.ls.del(LS_DATA + A.S.role);
-    A.S = { role: null, token: null, data: null, user: null, lastSync: 0 };
-    A.ui = {};
+    akhiriSesi();
     location.hash = '';
     tampilLogin();
   };
+  // Hapus sesi & data tersimpan di perangkat (token juga dicabut di server)
+  function akhiriSesi(sesi) {
+    sesi = sesi || { token: A.S.token, role: A.S.role };
+    if (sesi.token) U.api('logout', { token: sesi.token }).catch(() => { });
+    U.ls.del(LS_SESI);
+    if (sesi.role) U.ls.del(LS_DATA + sesi.role);
+    A.S = { role: null, token: null, data: null, user: null, lastSync: 0 };
+    A.ui = {};
+  }
 
   function tampilLogin(opsi) {
     opsi = opsi || {};
@@ -167,8 +182,6 @@
       appEl.innerHTML = `<div class="login-wrap"><span class="deco" style="font-size:140px;top:2%;left:4%">A</span><span class="deco" style="font-size:120px;bottom:6%;right:6%">3</span><span class="deco" style="font-size:90px;top:30%;right:10%">1</span>
         <div class="login-box"><div class="login-logo">${U.logoHtml(set, '<span style="font-family:var(--f-head);font-weight:900;font-size:44px">A</span>')}<span class="star">${icon('star', 'ic-sm ic-fill')}</span></div>
           <div class="login-title"><h1>${esc(set.nama_aplikasi || 'Ahe & Ala')}</h1><p class="muted">Manajemen Les Baca & Berhitung</p></div>
-          ${opsi.sesiLama ? `<div class="card card-pad sesi-lama mb-12"><div class="row-gap">${icon('circle-check')}<div style="flex:1"><b>Anda masih masuk</b><div class="small muted">sebagai ${esc(opsi.sesiLama.role === 'admin' ? 'Admin' : 'Guru')} · ${esc((opsi.sesiLama.user || {}).nama || '')}</div></div></div>
-            <div class="row-gap mt-12"><button class="btn btn-primary btn-sm" data-lanjut style="flex:1">${icon('arrow-right')} Lanjutkan</button><button class="btn btn-light btn-sm" data-keluar-lama style="flex:1">${icon('log-out')} Keluar</button></div></div>` : ''}
           <div class="card card-pad" style="padding:22px">
             <div class="seg full mb-16"><button class="${ui.peran === 'guru' ? 'on' : ''}" data-peran="guru">${icon('graduation-cap')} Guru</button><button class="${ui.peran === 'admin' ? 'on' : ''}" data-peran="admin">${icon('shield-check')} Admin</button></div>
             <form id="flogin" class="form-stack" autocomplete="on">
@@ -188,11 +201,6 @@
       $$('[data-peran]').forEach((b) => b.onclick = () => { ui.peran = b.dataset.peran; render(); });
       const pk = $('[data-pick]'); if (pk) pk.onclick = () => { ui.buka = !ui.buka; render(); };
       $$('[data-g]').forEach((b) => b.onclick = () => { ui.guruId = b.dataset.g; ui.buka = false; render(); setTimeout(() => $('#l-pass').focus(), 30); });
-      const lj = $('[data-lanjut]'); if (lj) lj.onclick = () => lanjutSesi(opsi.sesiLama);
-      const kl = $('[data-keluar-lama]'); if (kl) kl.onclick = () => {
-        U.api('logout', { token: opsi.sesiLama.token }).catch(() => { });
-        U.ls.del(LS_SESI); A.S.token = null; opsi.sesiLama = null; U.toast('Anda sudah keluar'); render();
-      };
       $('[data-eye]').onclick = (e) => { const p = $('#l-pass'); p.type = p.type === 'password' ? 'text' : 'password'; e.currentTarget.innerHTML = icon(p.type === 'password' ? 'eye' : 'eye-off'); };
       $('#flogin').onsubmit = async (e) => {
         e.preventDefault();
@@ -405,15 +413,37 @@
   // ======================================================================
   // HALAMAN GURU
   // ======================================================================
+  // Draf absen: centangan yang belum disimpan tetap aman di perangkat (mis. aplikasi tertutup tidak sengaja)
+  const LS_DRAF = 'ahe_absen_draf_v1';
+  A.drafAbsen = {
+    baca() { const d = U.ls.get(LS_DRAF, null); return d && A.S.user && d.guruId === A.S.user.id && d.tgl === U.today() ? d : null; },
+    simpan(sel) { if (A.S.user) U.ls.set(LS_DRAF, { guruId: A.S.user.id, tgl: U.today(), sel: Array.from(sel), waktu: Date.now() }); },
+    hapus() { U.ls.del(LS_DRAF); },
+    ada() { return !!A.drafAbsen.baca(); }
+  };
+  const samaSet = (a, b) => a.size === b.size && Array.from(a).every((x) => b.has(x));
   A.page('absen', {
     role: 'guru', title: 'Absen Hari Ini', crumb: 'Absen Hari Ini',
     render(view) {
       const d = A.S.data, me = A.S.user, t = U.today();
       const ui = A.ui.absen = A.ui.absen || { q: '', tab: 'semua', sel: null, dirty: false };
       const milikSaya = (d.hadirHariIni || []).filter((h) => h.guruId === me.id).map((h) => h.siswaId);
-      if (!ui.sel || (!ui.dirty && ui.tgl !== t)) { ui.sel = new Set(milikSaya); ui.tgl = t; }
       const lain = {};
       (d.hadirHariIni || []).forEach((h) => { if (h.guruId !== me.id) lain[h.siswaId] = d.namaGuru[h.guruId] || 'guru lain'; });
+      if (!ui.sel || (!ui.dirty && ui.tgl !== t) || (ui.dirty && ui.tgl !== t)) {
+        ui.sel = new Set(milikSaya); ui.tgl = t; ui.dirty = false; ui.dipulihkan = 0;
+        // Pulihkan draf (centangan yang belum sempat disimpan)
+        const dr = A.drafAbsen.baca();
+        if (dr) {
+          const ada = new Set((d.siswaAktif || []).map((s) => s.id));
+          const sel = new Set(dr.sel.filter((id) => ada.has(id) && !lain[id]));
+          if (!samaSet(sel, ui.sel)) { ui.sel = sel; ui.dirty = true; ui.dipulihkan = Date.now(); }
+          else A.drafAbsen.hapus();
+        } else if (U.ls.get(LS_DRAF, null)) {
+          const lama = U.ls.get(LS_DRAF, null);
+          if (lama.guruId === me.id) A.drafAbsen.hapus(); // draf hari sebelumnya sudah tidak berlaku
+        }
+      }
       const libur = Rules.libur(t, d.libur);
       const hariLes = Rules.hariLes(t, d.libur);
       const semua = (d.siswaAktif || []).slice().sort((a, b) => a.nama.localeCompare(b.nama));
@@ -425,13 +455,14 @@
         pill(); return;
       }
       view.innerHTML = head + `
+        ${ui.dirty && ui.dipulihkan ? `<div class="note-box warn mt-16" id="draf-info">${icon('notebook-pen')}<span style="flex:1 1 220px"><b>Draf absen dipulihkan.</b> Centangan Anda sebelumnya (${ui.sel.size} siswa) belum disimpan. Periksa lalu tekan <b>Simpan Kehadiran</b>.</span><button class="btn btn-light btn-sm" id="draf-buang">${icon('rotate-ccw')} Buang draf</button></div>` : ''}
         <div class="note-box mt-16">${icon('info')}<span>Pilih siswa yang Anda ajar hari ini. Menyimpan absen sekaligus mencatat <b>kehadiran Anda</b> dan <b>kehadiran siswa</b>.</span></div>
         <div class="input-icon mt-16">${icon('search')}<input class="input" id="cari" placeholder="Cari nama / panggilan siswa…" value="${esc(ui.q)}" autocomplete="off"></div>
         <div class="row-gap mt-12"><div class="tabs" style="flex:1">${[['semua', 'Semua'], ['ahe', 'Baca'], ['ala', 'Berhitung']].map(([k, l]) => `<button class="tab ${ui.tab === k ? 'on' : ''}" data-tab="${k}">${l} <span class="n">${jml[k]}</span></button>`).join('')}</div>
           <span class="chip chip-ahe" id="jml-pilih">Terpilih: ${ui.sel.size}</span></div>
         <div class="slist mt-12" id="slist"></div>
         <div class="sticky-act"><button class="btn btn-accent btn-lg btn-block btn-pill" id="btn-simpan"></button>
-          <p class="tiny muted mt-8" style="text-align:center">${icon('cloud', 'ic-sm')} Tersimpan di perangkat seketika, dikirim otomatis walau sinyal putus</p></div>`;
+          <p class="tiny muted mt-8" style="text-align:center" id="draf-ket"></p></div>`;
       const daftar = () => {
         const q = ui.q.trim().toLowerCase();
         const rows = semua.filter((s) => (ui.tab === 'semua' || s.program === ui.tab) && (!q || (s.nama + ' ' + s.panggilan).toLowerCase().includes(q)));
@@ -454,12 +485,20 @@
         b.innerHTML = sama && sudah ? `${icon('circle-check')} Kehadiran tersimpan (${ui.sel.size} siswa)` : `${icon('circle-check')} ${sudah ? 'Perbarui' : 'Simpan'} Kehadiran (${ui.sel.size} siswa)`;
         b.classList.toggle('btn-accent', !(sama && sudah)); b.classList.toggle('btn-soft', sama && sudah);
         $('#jml-pilih').textContent = 'Terpilih: ' + ui.sel.size;
+        $('#draf-ket').innerHTML = ui.dirty
+          ? `${icon('notebook-pen', 'ic-sm')} <b>Draf tersimpan di perangkat</b> — aman walau aplikasi tertutup. Tekan Simpan agar tercatat.`
+          : `${icon('cloud', 'ic-sm')} Tersimpan di perangkat seketika, dikirim otomatis walau sinyal putus`;
+      };
+      const catatDraf = () => {
+        if (samaSet(ui.sel, new Set(milikSaya))) { A.drafAbsen.hapus(); ui.dirty = false; }
+        else A.drafAbsen.simpan(ui.sel);
       };
       const toggle = (el) => {
         if (el.classList.contains('lock')) { U.toast('Siswa ini sudah dicatat guru lain hari ini', 'info'); return; }
         const id = el.dataset.s;
         if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id);
         ui.dirty = true;
+        catatDraf();
         el.classList.toggle('on'); el.setAttribute('aria-checked', ui.sel.has(id));
         $('input', el).checked = ui.sel.has(id);
         tombol();
@@ -482,10 +521,13 @@
           r.hari = r.tanggal.length; r.siswa = r.tanggal.reduce((a, x) => a + x[1], 0);
           r.banyak = r.tanggal.filter((x) => x[1] > (+dd.settings.ambang_siswa_banyak || 10)).length;
         }, { render: false });
-        ui.dirty = false;
+        ui.dirty = false; ui.dipulihkan = 0;
+        A.drafAbsen.hapus();
         U.toast(pilih.length ? `Kehadiran ${pilih.length} siswa tersimpan` : 'Kehadiran hari ini dikosongkan');
         A.render();
       };
+      const buang = $('#draf-buang');
+      if (buang) buang.onclick = () => { A.drafAbsen.hapus(); ui.sel = new Set(milikSaya); ui.dirty = false; ui.dipulihkan = 0; U.toast('Draf absen dibuang'); A.render(); };
       daftar();
       pill();
     }
@@ -512,7 +554,7 @@
         <div class="tabs mb-16">${bulan.map((b) => `<button class="tab ${b === ui.bulan ? 'on' : ''}" data-b="${b}">${U.bulan(b)}</button>`).join('')}</div>
         <div class="stats">
           <div class="card stat"><div class="top"><span class="lbl">Hari mengajar</span><span class="icon-dot sm">${icon('calendar-check')}</span></div><div class="val">${r.hari}</div><div class="sub">dari ${Rules.hariLesBulan(ui.bulan, d.libur).length} hari les</div></div>
-          <div class="card stat"><div class="top"><span class="lbl">Total siswa</span><span class="icon-dot sm ala">${icon('users')}</span></div><div class="val">${r.siswa}</div><div class="sub">${r.hari ? 'rata-rata ' + (r.siswa / r.hari).toFixed(1) + ' / hari' : '-'}</div></div>
+          <div class="card stat"><div class="top"><span class="lbl">Total siswa</span><span class="icon-dot sm ala">${icon('users')}</span></div><div class="val">${r.siswa}</div><div class="sub">${r.hari ? 'rata-rata ' + Math.round(r.siswa / r.hari) + ' / hari' : '-'}</div></div>
           <div class="card stat"><div class="top"><span class="lbl">Hari &gt; ${ambang} siswa</span><span class="icon-dot sm sun">${icon('star')}</span></div><div class="val">${r.banyak}</div><div class="sub">hari dengan siswa banyak</div></div>
         </div>
         <div class="card mt-16"><div class="card-head"><h3>${icon('list')} Rincian ${U.bulan(ui.bulan)}</h3></div>
@@ -526,12 +568,24 @@
   // ======================================================================
   // MULAI
   // ======================================================================
-  function boot() {
+  async function boot() {
     const sesi = U.ls.get(LS_SESI, null);
-    // Dibuka dari tombol "Masuk" di landing page → selalu tampilkan halaman login
+    // Dibuka dari tombol "Masuk" di landing page → sesi lama di perangkat ini DIAKHIRI dan halaman login tampil.
+    // (Mencegah pengunjung masuk ke akun admin/guru yang lupa keluar.)
     const minta = new URLSearchParams(location.search).has('masuk');
-    if (minta) history.replaceState(null, '', location.pathname + location.hash);
-    if (sesi && sesi.token && minta) { tampilLogin({ sesiLama: sesi }); return; }
+    if (minta) history.replaceState(null, '', location.pathname);
+    if (sesi && sesi.token && minta) {
+      if (OB.q.length && navigator.onLine) { // kirim dulu perubahan yang masih antre
+        A.S.token = sesi.token; A.S.role = sesi.role;
+        appEl.innerHTML = `<div class="login-wrap"><div class="empty">${icon('loader-circle', 'ic-xl spin')}<p>Menyiapkan halaman login…</p></div></div>`;
+        A._perluSegar = false;
+        try { await Promise.race([kirimBatch(), new Promise((r) => setTimeout(r, 8000))]); } catch (e) { /* lanjut */ }
+        A._perluSegar = false;
+      }
+      akhiriSesi(sesi);
+      tampilLogin();
+      return;
+    }
     lanjutSesi(sesi);
   }
   function lanjutSesi(sesi) {
