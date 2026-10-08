@@ -47,8 +47,8 @@
       ${sub ? `<a class="btn btn-ghost btn-icon btn-sm" href="#/" aria-label="Kembali">${icon('arrow-left')}</a>` : ''}
       <a class="pub-brand" href="#/"><span class="lg">${U.logoHtml(s)}</span><span><b>${esc(s.nama_aplikasi || 'Ahe & Ala')}</b><small>${esc(sub || s.slogan || 'Les Baca & Berhitung')}</small></span></a>
       ${sub ? '' : `<nav class="pub-links">${links.map(([id, l]) => `<a href="#/" data-go="${id}">${l}</a>`).join('')}</nav>`}
-      <div class="acts">${sub ? '' : `<a class="btn btn-light btn-sm btn-masuk" href="app.html?masuk=1" aria-label="Masuk (guru / admin)">${icon('log-in', 'ic-sm')}<span>Masuk</span></a>`}
-        ${!sub && buka() ? `<a class="btn btn-accent btn-sm btn-pill d-only" href="#/daftar">Daftar Sekarang</a>` : ''}</div>
+      <div class="acts">${sub ? '' : `<a class="btn btn-light btn-sm btn-masuk d-only" href="app.html?masuk=1" aria-label="Masuk (guru / admin)">${icon('log-in', 'ic-sm')}<span>Masuk</span></a>`}
+        ${!sub && buka() ? `<a class="btn btn-accent btn-sm btn-pill" href="#/daftar">Daftar Sekarang</a>` : ''}</div>
     </div></header>`;
   }
 
@@ -169,7 +169,8 @@
       <div class="bottom">© ${new Date().getFullYear()} ${esc(s.nama_lembaga || s.nama_aplikasi || '')}</div></div></footer>`;
   }
   function landing() {
-    document.body.classList.toggle('has-mbar', true);
+    const adaMbar = !!(set().wa_admin || buka());
+    document.body.classList.toggle('has-mbar', adaMbar);
     const urut = seksiLengkap().sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0));
     let html = nav();
     urut.forEach((s) => {
@@ -178,7 +179,7 @@
       if (R[s.id]) html += R[s.id](s);
     });
     html += footer();
-    html += `<div class="mbar">${set().wa_admin ? `<a class="btn btn-wa" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin)}">${icon('message-circle')} Hubungi WA</a>` : `<a class="btn btn-light" href="app.html?masuk=1">Masuk</a>`}
+    if (adaMbar) html += `<div class="mbar">${set().wa_admin ? `<a class="btn btn-wa" target="_blank" rel="noopener" href="${U.waLink(set().wa_admin)}">${icon('message-circle')} Hubungi WA</a>` : ''}
       ${buka() ? `<a class="btn btn-accent" href="#/daftar">Daftar Sekarang ${icon('arrow-right')}</a>` : ''}</div>`;
     root.innerHTML = html;
     pasangLanding();
