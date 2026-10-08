@@ -19,6 +19,7 @@
   function terapkanIdentitas() {
     const s = set();
     U.applyTheme(s.warna_utama);
+    U.applyLatar(s.warna_latar_landing);
     document.title = (s.nama_aplikasi || 'Les Baca & Berhitung') + (s.nama_lembaga ? ' — ' + s.nama_lembaga : '');
   }
 

@@ -116,6 +116,15 @@
     const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = hex;
   };
 
+  // Warna latar landing page (kosong = bawaan krem)
+  U.LATAR_BAWAAN = '#FFF8E7';
+  U.terang = (hex) => /^#[0-9a-f]{6}$/i.test(hex || '') && lum(hexRgb(hex)) >= 0.6;
+  U.campur = (hex, t) => /^#[0-9a-f]{6}$/i.test(hex || '') ? rgbHex(mix(hexRgb(hex), [255, 255, 255], t)) : '';
+  U.applyLatar = (hex) => {
+    const st = document.documentElement.style;
+    if (U.terang(hex)) st.setProperty('--bg-public', hex); else st.removeProperty('--bg-public');
+  };
+
   // ---------------- Penyimpanan lokal aman ----------------
   U.ls = {
     get(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } },

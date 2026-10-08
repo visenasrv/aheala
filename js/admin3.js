@@ -16,6 +16,9 @@
     render(view) {
       const d = D();
       const ui = A.ui.libur = A.ui.libur || { ym: U.ymNow(), tab: 'datang', edit: null, prompt: null, rasio: '1:1' };
+      const tm = A.ui.tglMerah = A.ui.tglMerah || { tahun: +U.today().slice(0, 4), data: {}, cuti: true, muat: {} };
+      muatTanggalMerah(tm, tm.tahun); muatTanggalMerah(tm, +ui.ym.slice(0, 4));
+      const merahKal = {}; ((tm.data[ui.ym.slice(0, 4)] || {}).daftar || []).forEach((x) => { if (tm.cuti || x.jenis === 'libur') merahKal[x.tgl] = merahKal[x.tgl] ? merahKal[x.tgl] + ' · ' + x.nama : (x.jenis === 'cuti' ? 'Cuti bersama ' : '') + x.nama; });
       const t = U.today();
       const semua = (d.libur || []).slice().sort((a, b) => a.tglMulai.localeCompare(b.tglMulai));
       const datang = semua.filter((l) => (l.tglMasuk || l.tglSelesai) >= t), arsip = semua.filter((l) => (l.tglMasuk || l.tglSelesai) < t).reverse();
@@ -29,8 +32,9 @@
       const masukSet = new Set(semua.map((l) => l.tglMasuk).filter(Boolean));
       for (let i = 1; i <= n; i++) {
         const tg = ui.ym + '-' + String(i).padStart(2, '0'); const w = U.dow(tg); const lb = R.libur(tg);
+        const mr = merahKal[tg];
         const cls = lb ? 'lib' : (w === 0 || w === 6) ? 'we' : masukSet.has(tg) ? 'back' : '';
-        sel += `<div class="d ${cls} ${tg === t ? 'today' : ''}" title="${esc(lb ? lb.keterangan : '')}">${i}<small>${lb ? 'Libur' : (w === 0 || w === 6) ? '' : masukSet.has(tg) ? 'Masuk' : '• Les'}</small></div>`;
+        sel += `<div class="d ${cls} ${mr ? 'merah' : ''} ${tg === t ? 'today' : ''}" title="${esc(lb ? lb.keterangan : mr || '')}">${i}<small>${lb ? 'Libur' : mr && w !== 0 && w !== 6 ? 'Tgl merah' : (w === 0 || w === 6) ? '' : masukSet.has(tg) ? 'Masuk' : '• Les'}</small></div>`;
       }
       const pl = semua.find((l) => l.id === ui.prompt);
       view.innerHTML = `<div class="page-head"><div><h1>Hari Libur Khusus</h1><p>Hari libur tidak dihitung pada absen guru, rekap kehadiran, dan peringatan tidak masuk. Buat prompt poster pengumuman sekali klik.</p></div>
@@ -39,7 +43,8 @@
           <div class="card"><div class="card-head"><h3>${icon('calendar')} Kalender les</h3><div class="row-gap"><button class="btn btn-light btn-icon btn-sm" data-ym="-1" aria-label="Bulan sebelumnya">${icon('chevron-left')}</button><b style="min-width:120px;text-align:center">${U.bulan(ui.ym)}</b><button class="btn btn-light btn-icon btn-sm" data-ym="1" aria-label="Bulan berikutnya">${icon('chevron-right')}</button></div></div>
             <div class="card-body"><div class="row-gap mb-12 small muted"><span>Hari les: <b>${R.hariLesBulan(ui.ym).length}</b></span><span>·</span><span>Libur khusus: <b>${Array.from({ length: n }, (_, i) => ui.ym + '-' + String(i + 1).padStart(2, '0')).filter((x) => R.libur(x) && U.dow(x) % 6 !== 0).length}</b> hari</span></div>
               <div class="cal">${['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((x) => `<div class="dn">${x}</div>`).join('')}${sel}</div>
-              <div class="legend mt-12"><span><i style="background:#fff;border:1px solid var(--line)"></i>Hari les</span><span><i style="background:var(--accent-700)"></i>Libur khusus</span><span><i style="background:var(--p-50)"></i>Akhir pekan</span><span><i style="background:var(--ala-50)"></i>Masuk kembali</span></div></div></div>
+              <div class="legend mt-12"><span><i style="background:#fff;border:1px solid var(--line)"></i>Hari les</span><span><i style="background:var(--accent-700)"></i>Libur khusus</span><span><i style="background:var(--p-50)"></i>Akhir pekan</span><span><i style="background:var(--ala-50)"></i>Masuk kembali</span><span><i class="lg-merah"></i>Tanggal merah (belum diliburkan)</span></div></div></div>
+          ${kartuTanggalMerah(tm, semua, t)}
           <div class="row-gap"><h3 style="flex:1">Daftar hari libur</h3><div class="tabs"><button class="tab ${ui.tab === 'datang' ? 'on' : ''}" data-tab="datang">Mendatang <span class="n">${datang.length}</span></button><button class="tab ${ui.tab === 'arsip' ? 'on' : ''}" data-tab="arsip">Arsip <span class="n">${arsip.length}</span></button></div></div>
           ${list.length ? list.map((l, i) => { const nh = hitungHari(l); return `<div class="card card-pad" style="${ui.tab === 'datang' && i === 0 ? 'border-left:4px solid var(--accent)' : ''}">
             <div class="row-gap">${ui.tab === 'datang' && i === 0 ? '<span class="chip chip-acc">Terdekat</span>' : ''}<span class="chip">${nh} hari les diliburkan</span>${l.tampilLanding === 'ya' ? `<span class="chip chip-ala">${icon('eye')} Tampil di landing</span>` : ''}</div>
@@ -55,12 +60,8 @@
             <label class="switch"><input type="checkbox" name="tampil" ${e.tampilLanding === 'ya' ? 'checked' : ''}><span class="track"></span><span class="small strong">Tampilkan pengumuman di landing page</span></label>
             <div class="note-box">${icon('shield-check')}<span>Tanggal libur otomatis dikecualikan dari hari les: absen guru ditutup, tidak dihitung di rekap, dan tidak memicu peringatan tidak masuk.</span></div>
             <div class="row-gap">${e.id ? `<button type="button" class="btn btn-light" data-batal>Batal</button>` : ''}<button class="btn btn-primary spacer" type="submit">${icon('save')} Simpan Hari Libur</button></div></form></div>
-          <div class="card card-pad" style="border:2px solid var(--p-100)"><div class="row-gap mb-12"><span class="icon-dot acc">${icon('wand-sparkles')}</span><div style="flex:1"><h3>Prompt Poster Pengumuman</h3><div class="small muted">Salin, lalu tempel di ChatGPT untuk membuat poster</div></div></div>
-            ${pl ? `<div class="seg full mb-12"><button class="${ui.rasio === '1:1' ? 'on' : ''}" data-rasio="1:1">${icon('image')} 1:1 Feed</button><button class="${ui.rasio === '9:16' ? 'on' : ''}" data-rasio="9:16">9:16 Status/Story</button></div>
-              <div class="small strong mb-12">Untuk: ${esc(pl.keterangan)}</div><textarea class="input" id="l-prompt" rows="12" readonly style="font-size:13px">${esc(buatPrompt(pl, ui.rasio))}</textarea>
-              <div class="row-gap mt-12"><button class="btn btn-accent spacer" id="l-salin">${icon('copy')} Salin Prompt</button><a class="btn btn-light" href="https://chatgpt.com/" target="_blank" rel="noopener">${icon('external-link')} Buka ChatGPT</a></div>
-              <p class="tiny muted mt-8">Tip: setelah poster jadi, tempel logo lembaga di pojok kiri atas yang sudah dikosongkan.</p>`
-              : A.kosong('sparkles', 'Pilih hari libur', 'Tekan "Buat Prompt Poster" pada salah satu hari libur.')}</div>
+          <div class="card card-pad" style="border:2px solid var(--p-100)" id="poster-card"><div class="row-gap mb-12"><span class="icon-dot acc">${icon('wand-sparkles')}</span><div style="flex:1"><h3>Prompt Poster Pengumuman</h3><div class="small muted">Untuk ChatGPT — lengkap dengan logo lembaga</div></div></div>
+            ${pl ? kartuPoster(pl, ui) : A.kosong('sparkles', 'Pilih hari libur', 'Tekan "Buat Prompt Poster" pada salah satu hari libur.')}</div>
         </div></div>`;
       const f = $('#flibur');
       const saran = () => { const s = f.tglSelesai.value || f.tglMulai.value; if (!U.isTgl(s)) { $('#l-saran').textContent = ''; return; } let x = U.addDays(s, 1), g = 0; while ((U.dow(x) === 0 || U.dow(x) === 6) && g++ < 7) x = U.addDays(x, 1); $('#l-saran').innerHTML = `Saran: <a href="#" id="l-pakai">${esc(U.tglHari(x))}</a>`; $('#l-pakai').onclick = (ev) => { ev.preventDefault(); f.tglMasuk.value = x; }; };
@@ -89,26 +90,220 @@
         A.kirim({ op: 'deleteLibur', id: l.id, _label: 'Hapus libur' });
       });
       $$('[data-rasio]').forEach((b) => b.onclick = () => { ui.rasio = b.dataset.rasio; A.render(); });
-      const sl = $('#l-salin'); if (sl) sl.onclick = async () => { if (await U.salin($('#l-prompt').value)) U.toast('Prompt disalin — tempel di ChatGPT'); };
+      pasangTanggalMerah(tm, ui, semua);
+      if (pl) pasangPoster(pl, ui);
     }
   });
+  // ---------------- Rekomendasi libur dari tanggal merah ----------------
+  function muatTanggalMerah(tm, tahun) {
+    const k = String(tahun);
+    if (tm.data[k] || tm.muat[k]) return;
+    tm.muat[k] = true;
+    U.api('tanggalMerah', { token: A.S.token, tahun: k }, { timeout: 60000 })
+      .then((r) => { tm.data[k] = r; })
+      .catch((e) => { tm.data[k] = { tahun: k, daftar: [], pesan: e.message }; })
+      .finally(() => { tm.muat[k] = false; if (location.hash.indexOf('#/libur') === 0) A.render(); });
+  }
+  const hariKerja = (x) => { const w = U.dow(x); return w !== 0 && w !== 6; };
+  // Gabungkan tanggal merah yang berdekatan (hanya dipisah akhir pekan) menjadi satu rekomendasi libur
+  function kelompokMerah(daftar, cuti) {
+    const list = daftar.filter((x) => cuti || x.jenis === 'libur').slice().sort((a, b) => a.tgl.localeCompare(b.tgl));
+    const grup = [];
+    list.forEach((x) => {
+      const g = grup[grup.length - 1];
+      let sambung = false;
+      if (g) { let d = U.addDays(g.akhir, 1), aman = true, n = 0; while (d < x.tgl && n++ < 7) { if (hariKerja(d)) aman = false; d = U.addDays(d, 1); } sambung = aman && x.tgl <= U.addDays(g.akhir, 3); }
+      if (sambung) { g.akhir = x.tgl; g.tgl.push(x.tgl); if (!g.nama.includes(x.nama)) g.nama.push(x.nama); if (x.jenis === 'cuti') g.cuti = true; }
+      else grup.push({ awal: x.tgl, akhir: x.tgl, tgl: [x.tgl], nama: [x.nama], cuti: x.jenis === 'cuti' });
+    });
+    const merah = new Set(list.map((x) => x.tgl));
+    grup.forEach((g) => {
+      const kerja = g.tgl.filter(hariKerja);
+      g.hariLes = kerja.length;
+      g.mulai = kerja[0] || g.awal; g.selesai = kerja[kerja.length - 1] || g.akhir;
+      let m = U.addDays(g.akhir, 1), n = 0; while ((!hariKerja(m) || merah.has(m)) && n++ < 14) m = U.addDays(m, 1);
+      g.masuk = m;
+      g.judul = g.nama.length > 1 ? g.nama.slice(0, -1).join(', ') + ' & ' + g.nama[g.nama.length - 1] : g.nama[0];
+      g.ket = ('Libur ' + g.judul).slice(0, 120);
+    });
+    return grup;
+  }
+  const sudahDiliburkan = (g, semua) => semua.some((l) => l.tglMulai <= g.selesai && (l.tglSelesai || l.tglMulai) >= g.mulai);
+  const rentangPendek = (a, b) => a === b ? U.tglHari(a) : U.tglPanjang(a) + ' – ' + U.tglPanjang(b);
+  function kartuTanggalMerah(tm, semua, t) {
+    const k = String(tm.tahun), r = tm.data[k];
+    const thnKini = +t.slice(0, 4);
+    let isi;
+    if (!r) isi = `<div class="row-gap small muted" style="padding:6px 0">${icon('loader-circle', 'spin')} Memuat tanggal merah ${esc(k)}…</div>`;
+    else if (!r.daftar.length) isi = `<div class="note-box">${icon('info')}<span>${esc(r.pesan || 'Data tanggal merah belum tersedia.')}</span></div>`;
+    else {
+      const grup = kelompokMerah(r.daftar, tm.cuti).filter((g) => g.akhir >= t);
+      const baru = grup.filter((g) => g.hariLes && !sudahDiliburkan(g, semua));
+      const MAKS = 5, sembunyi = !tm.semua && grup.length > MAKS + 1;
+      isi = grup.length ? `<div class="tm-list">${grup.map((g, i) => { if (sembunyi && i >= MAKS) return ''; const sudah = sudahDiliburkan(g, semua); return `<div class="tm-item ${sudah ? 'sudah' : ''}">
+          <div class="tm-tgl"><b>${esc(g.mulai.slice(8, 10))}</b><small>${esc(U.BULAN[+g.mulai.slice(5, 7) - 1].slice(0, 3))}</small></div>
+          <div class="t"><b>${esc(g.judul)}</b><div class="tiny muted">${esc(rentangPendek(g.awal, g.akhir))}</div>
+            <div class="row-gap mt-8" style="gap:6px">${g.hariLes ? `<span class="chip chip-sm">${g.hariLes} hari les</span>` : '<span class="chip chip-sm chip-outline">Jatuh di akhir pekan</span>'}${g.cuti ? '<span class="chip chip-sm chip-warn">termasuk cuti bersama</span>' : ''}</div></div>
+          ${sudah ? `<span class="chip chip-ok chip-sm">${icon('check', 'ic-sm')} Sudah</span>` : g.hariLes ? `<button class="btn btn-soft btn-sm" data-tm="${i}">${icon('plus', 'ic-sm')} Liburkan</button>` : ''}</div>`; }).join('')}</div>
+        ${sembunyi ? `<button class="btn btn-ghost btn-sm btn-block mt-8" id="tm-lagi">${icon('chevron-down', 'ic-sm')} Tampilkan semua (${grup.length})</button>` : ''}
+        ${baru.length > 1 ? `<button class="btn btn-light btn-block mt-12" id="tm-semua">${icon('calendar-x')} Liburkan semua yang belum (${baru.length})</button>` : ''}`
+        : `<p class="small muted">Tidak ada tanggal merah tersisa di ${esc(k)}.</p>`;
+    }
+    return `<div class="card"><div class="card-head"><h3>${icon('calendar-check')} Rekomendasi dari tanggal merah</h3><div class="row-gap"><button class="btn btn-light btn-icon btn-sm" data-tmth="-1" ${tm.tahun <= thnKini ? 'disabled' : ''} aria-label="Tahun sebelumnya">${icon('chevron-left')}</button><b class="num" style="min-width:44px;text-align:center">${esc(k)}</b><button class="btn btn-light btn-icon btn-sm" data-tmth="1" ${tm.tahun >= thnKini + 1 ? 'disabled' : ''} aria-label="Tahun berikutnya">${icon('chevron-right')}</button></div></div>
+      <div class="card-body"><div class="row-gap mb-12"><label class="switch"><input type="checkbox" id="tm-cuti" ${tm.cuti ? 'checked' : ''}><span class="track"></span><span class="small strong">Sertakan cuti bersama</span></label><span class="spacer"></span>${r && r.sumber ? `<span class="tiny muted">Sumber: ${esc(r.sumber)}</span>` : ''}</div>
+        ${isi}<p class="tiny muted mt-12">${icon('info', 'ic-sm')} Rekomendasi saja — tanggal merah baru menjadi libur les setelah Anda tekan <b>Liburkan</b> lalu <b>Simpan</b>.</p></div></div>`;
+  }
+  function pasangTanggalMerah(tm, ui, semua) {
+    $$('[data-tmth]').forEach((b) => b.onclick = () => { tm.tahun += +b.dataset.tmth; A.render(); });
+    const c = $('#tm-cuti'); if (c) c.onchange = () => { tm.cuti = c.checked; A.render(); };
+    const lg = $('#tm-lagi'); if (lg) lg.onclick = () => { tm.semua = true; A.render(); };
+    const r = tm.data[String(tm.tahun)];
+    if (!r || !r.daftar.length) return;
+    const grup = kelompokMerah(r.daftar, tm.cuti).filter((g) => g.akhir >= U.today());
+    $$('[data-tm]').forEach((b) => b.onclick = () => {
+      const g = grup[+b.dataset.tm];
+      ui.edit = { id: '', keterangan: g.ket, tglMulai: g.mulai, tglSelesai: g.selesai, tglMasuk: g.masuk, tampilLanding: 'ya' };
+      ui.ym = g.mulai.slice(0, 7);
+      A.render();
+      const f = $('#flibur'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.classList.add('kedip'); setTimeout(() => f.classList.remove('kedip'), 1400); }
+      U.toast('Periksa isian, lalu tekan Simpan Hari Libur', 'info');
+    });
+    const sm = $('#tm-semua');
+    if (sm) sm.onclick = async () => {
+      const baru = grup.filter((g) => g.hariLes && !sudahDiliburkan(g, semua));
+      const ok = await U.confirm({ title: 'Liburkan ' + baru.length + ' tanggal merah?', ok: 'Iya, liburkan', batal: 'Tidak',
+        text: '<ul class="tm-konf">' + baru.map((g) => `<li><b>${esc(g.judul)}</b><br><span class="small muted">${esc(rentangPendek(g.mulai, g.selesai))} · masuk ${esc(U.tglHari(g.masuk))}</span></li>`).join('') + '</ul>' });
+      if (!ok) return;
+      const now = U.nowIso();
+      const recs = baru.map((g) => ({ id: U.uid(), keterangan: g.ket, tglMulai: g.mulai, tglSelesai: g.selesai, tglMasuk: g.masuk, tampilLanding: 'ya' }));
+      A.mut((dd) => { dd.libur = dd.libur.concat(recs.map((l) => Object.assign({ createdAt: now }, l))); });
+      recs.forEach((l) => A.kirim({ op: 'upsertLibur', libur: l, _label: 'Hari libur' }));
+      U.toast(recs.length + ' hari libur ditambahkan');
+    };
+  }
   function hitungHari(l) { let n = 0, d = l.tglMulai, g = 0; while (d <= (l.tglSelesai || l.tglMulai) && g++ < 400) { const w = U.dow(d); if (w !== 0 && w !== 6) n++; d = U.addDays(d, 1); } return n; }
-  function buatPrompt(l, rasio) {
+  // ---------------- Prompt poster: tema, warna, logo ----------------
+  const TEMA_POSTER = [
+    { id: 'ceria', nama: 'Ceria anak (bawaan)', w1: null, w2: '#F59E0B', gaya: 'ceria, ramah anak, namun tetap resmi dan rapi', latar: 'terang dan bersih', ornamen: 'bentuk-bentuk lembut seperti bintang kecil, huruf dan angka warna-warni', ilustrasi: 'anak-anak belajar membaca dan berhitung dengan gembira' },
+    { id: 'islami', nama: 'Islami (Ramadhan, Idulfitri, Iduladha, Maulid, Isra Mikraj, 1 Muharam)', w1: '#0F7B5F', w2: '#D4A017', gaya: 'Islami yang anggun, sejuk, dan ramah anak', latar: 'krem lembut atau hijau sangat muda', ornamen: 'bulan sabit dan bintang, lentera (fanus), siluet kubah masjid, dan pola geometris Islami (arabesk) di tepi poster', ilustrasi: 'anak-anak berpakaian muslim (peci dan kerudung) yang sopan dan ceria' },
+    { id: 'nasional', nama: 'Nasional / Kemerdekaan (merah putih)', w1: '#C8102E', w2: '#FFFFFF', gaya: 'semangat kebangsaan, cerah dan meriah', latar: 'putih dengan aksen merah', ornamen: 'bendera merah putih berkibar, pita merah putih, dan bintang', ilustrasi: 'anak-anak memegang bendera merah putih dengan gembira' },
+    { id: 'natal', nama: 'Natal & Tahun Baru', w1: '#166534', w2: '#B91C1C', gaya: 'hangat, damai, dan meriah', latar: 'krem hangat', ornamen: 'pohon cemara, bintang, dan kerlip lampu', ilustrasi: 'suasana liburan akhir tahun yang hangat untuk anak-anak' },
+    { id: 'imlek', nama: 'Imlek', w1: '#B91C1C', w2: '#D4A017', gaya: 'meriah dan elegan', latar: 'merah lembut dengan aksen emas', ornamen: 'lampion merah, awan, dan bunga mei', ilustrasi: 'anak-anak tersenyum dengan lampion' },
+    { id: 'damai', nama: 'Lembut & damai (Nyepi, Waisak, Paskah, dll.)', w1: '#4F6D9A', w2: '#E9D8A6', gaya: 'tenang, lembut, dan penuh hormat', latar: 'pastel lembut', ornamen: 'daun, bunga, dan cahaya lembut', ilustrasi: 'suasana tenang tanpa simbol keagamaan yang berlebihan' },
+    { id: 'sekolah', nama: 'Liburan semester / sekolah', w1: '#0284C7', w2: '#FACC15', gaya: 'ceria dan bersemangat seperti liburan', latar: 'biru langit cerah', ornamen: 'matahari, awan, buku, dan tas sekolah', ilustrasi: 'anak-anak bermain dan berlibur dengan gembira' },
+    { id: 'resmi', nama: 'Resmi & elegan (minimalis)', w1: null, w2: '#9CA3AF', gaya: 'resmi, elegan, dan minimalis', latar: 'putih bersih', ornamen: 'garis tipis dan bentuk geometris sederhana', ilustrasi: 'tanpa ilustrasi berlebihan, fokus pada teks' }
+  ];
+  const LS_POSTER = 'ahe_poster_gaya_v1';
+  function temaDariNama(k) {
+    k = String(k || '').toLowerCase();
+    if (/ramadh?an|puasa|idul ?fitri|idulfitri|lebaran|idul ?adh?a|iduladha|kurban|qurban|maulid|isra|mi.?raj|muharr?am|hijri|islam/.test(k)) return 'islami';
+    if (/kemerdekaan|17 agustus|hut ri|proklamasi|pancasila|sumpah pemuda|pahlawan|kartini/.test(k)) return 'nasional';
+    if (/natal|christmas|tahun baru masehi|akhir tahun/.test(k)) return 'natal';
+    if (/imlek|tionghoa/.test(k)) return 'imlek';
+    if (/nyepi|waisak|paskah|wafat|kenaikan/.test(k)) return 'damai';
+    if (/semester|liburan sekolah|libur sekolah|kenaikan kelas/.test(k)) return 'sekolah';
+    return 'ceria';
+  }
+  function ucapanDariNama(k) {
+    k = String(k || '').toLowerCase();
+    const th = (k.match(/\d{4}\s*h\b/i) || [''])[0].toUpperCase().replace(/\s+/, ' ');
+    if (/ramadh?an|puasa/.test(k)) return 'Marhaban ya Ramadhan';
+    if (/idul ?fitri|idulfitri|lebaran/.test(k)) return 'Selamat Hari Raya Idulfitri' + (th ? ' ' + th : '') + ' — Mohon Maaf Lahir dan Batin';
+    if (/idul ?adh?a|iduladha|kurban|qurban/.test(k)) return 'Selamat Hari Raya Iduladha' + (th ? ' ' + th : '');
+    if (/maulid/.test(k)) return 'Selamat Memperingati Maulid Nabi Muhammad saw.';
+    if (/isra|mi.?raj/.test(k)) return 'Selamat Memperingati Isra Mikraj Nabi Muhammad saw.';
+    if (/muharr?am|tahun baru islam|hijri/.test(k)) return 'Selamat Tahun Baru Islam' + (th ? ' ' + th : '');
+    if (/kemerdekaan|17 agustus|proklamasi/.test(k)) return 'Dirgahayu Republik Indonesia';
+    if (/natal/.test(k)) return 'Selamat Hari Natal';
+    if (/imlek/.test(k)) return 'Selamat Tahun Baru Imlek';
+    return '';
+  }
+  // Pengaturan poster per hari libur (tersimpan di perangkat ini)
+  function gayaPoster(l) {
+    const semua = U.ls.get(LS_POSTER, {}) || {};
+    const g = semua[l.id] || {};
+    const tema = TEMA_POSTER.find((x) => x.id === g.tema) || TEMA_POSTER.find((x) => x.id === temaDariNama(l.keterangan));
+    const utama = D().settings.warna_utama || '#6B2F8F';
+    return { tema: tema.id, w1: g.w1 || tema.w1 || utama, w2: g.w2 || tema.w2, catatan: g.catatan || '', ucapan: g.ucapan !== undefined ? g.ucapan : ucapanDariNama(l.keterangan) };
+  }
+  function simpanGayaPoster(l, g) { const semua = U.ls.get(LS_POSTER, {}) || {}; semua[l.id] = g; U.ls.set(LS_POSTER, semua); }
+  function buatPrompt(l, rasio, g) {
     const set = D().settings;
+    g = g || gayaPoster(l);
+    const tema = TEMA_POSTER.find((x) => x.id === g.tema) || TEMA_POSTER[0];
     const rentang = l.tglSelesai && l.tglSelesai !== l.tglMulai ? `mulai ${U.tglHari(l.tglMulai)} sampai ${U.tglHari(l.tglSelesai)}` : `pada ${U.tglHari(l.tglMulai)}`;
+    const lembaga = (set.nama_lembaga || set.nama_aplikasi || '') + (set.nama_unit ? ' (' + set.nama_unit + ')' : '');
     return [
-      'Buatkan poster pengumuman libur les untuk anak-anak, gaya ceria namun tetap resmi dan rapi.',
+      `Buatkan poster pengumuman libur les untuk anak-anak dengan gaya ${tema.gaya}.`,
       `Rasio ${rasio}${rasio === '9:16' ? ' (vertikal untuk status WhatsApp / story)' : ' (persegi untuk feed Instagram / Facebook / WhatsApp)'}.`,
-      `Warna utama ${set.warna_utama || '#6B2F8F'}, warna pendukung oranye dan kuning lembut, latar terang.`,
+      `Warna utama ${g.w1}, warna pendukung ${g.w2}, latar ${tema.latar}.`,
+      `Ornamen: ${tema.ornamen}.`,
+      set.logo_data
+        ? 'LOGO: Saya melampirkan gambar logo lembaga. Pasang logo tersebut apa adanya di pojok kiri atas poster dengan ukuran proporsional dan jelas. JANGAN menggambar ulang, mengubah bentuk, warna, atau tulisan pada logo.'
+        : 'Sediakan ruang kosong di pojok kiri atas untuk logo lembaga.',
       'Judul besar: "PENGUMUMAN LIBUR"',
-      `Nama lembaga: ${set.nama_lembaga || set.nama_aplikasi}${set.nama_unit ? ' (' + set.nama_unit + ')' : ''}`,
-      `Isi: "Kegiatan Les Baca & Berhitung diliburkan dalam rangka ${l.keterangan},`,
+      g.ucapan ? `Tulis ucapan dengan huruf indah: "${g.ucapan}"` : '',
+      `Nama lembaga: ${lembaga}`,
+      `Isi: "Kegiatan Les Baca & Berhitung diliburkan dalam rangka ${String(l.keterangan).replace(/^libur\s+/i, '')},`,
       `${rentang}.${l.tglMasuk ? `\nLes masuk kembali pada ${U.tglHari(l.tglMasuk)}.` : ''}"`,
-      'Sediakan ruang kosong di pojok kiri atas untuk logo lembaga.',
-      'Tambahkan ilustrasi anak-anak belajar membaca dan berhitung yang ramah.',
+      `Ilustrasi: ${tema.ilustrasi}.`,
       set.wa_admin ? `Di bagian bawah tulis kontak kecil: "Info: ${U.tampilWa(set.wa_admin)}".` : '',
+      g.catatan ? 'Catatan tambahan: ' + g.catatan : '',
       'Pastikan semua teks berbahasa Indonesia, ejaan tepat, mudah dibaca, tanpa teks tambahan lain.'
     ].filter(Boolean).join('\n');
+  }
+  function kartuPoster(pl, ui) {
+    const set = D().settings, g = gayaPoster(pl);
+    const ada = !!set.logo_data;
+    return `<div class="seg full mb-12"><button class="${ui.rasio === '1:1' ? 'on' : ''}" data-rasio="1:1">${icon('image')} 1:1 Feed</button><button class="${ui.rasio === '9:16' ? 'on' : ''}" data-rasio="9:16">9:16 Status/Story</button></div>
+      <div class="small strong mb-12">Untuk: ${esc(pl.keterangan)}</div>
+      <div class="form-stack">
+        <div class="field"><label for="ps-tema">Tema / gaya poster</label><select class="input" id="ps-tema">${TEMA_POSTER.map((x) => `<option value="${x.id}" ${x.id === g.tema ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></div>
+        <div class="grid-2"><div class="field"><label>Warna utama</label><label class="ps-warna"><input type="color" id="ps-w1" value="${esc(g.w1.toLowerCase())}"><span class="num" id="ps-w1-t">${esc(g.w1.toUpperCase())}</span></label></div>
+          <div class="field"><label>Warna pendukung</label><label class="ps-warna"><input type="color" id="ps-w2" value="${esc(g.w2.toLowerCase())}"><span class="num" id="ps-w2-t">${esc(g.w2.toUpperCase())}</span></label></div></div>
+        <div class="field"><label for="ps-ucapan">Ucapan (opsional)</label><input class="input" id="ps-ucapan" maxlength="120" value="${esc(g.ucapan)}" placeholder="Contoh: Selamat Hari Raya Idulfitri — Mohon Maaf Lahir dan Batin"></div>
+        <div class="field"><label for="ps-catatan">Catatan gaya tambahan (opsional)</label><input class="input" id="ps-catatan" maxlength="200" value="${esc(g.catatan)}" placeholder="Contoh: nuansa malam dengan lampu lentera"></div>
+      </div>
+      <div class="ps-logo mt-12">${ada ? `<div class="lg"><img src="${esc(set.logo_data)}" alt="Logo lembaga"></div><div style="flex:1;min-width:0"><b class="small">Logo lembaga ikut dipakai</b><div class="tiny muted">Lampirkan logo ini di ChatGPT bersama prompt</div>
+          <div class="row-gap mt-8" style="gap:6px"><button class="btn btn-soft btn-sm" id="ps-unduh">${icon('download', 'ic-sm')} Unduh logo</button>${window.ClipboardItem && navigator.clipboard && navigator.clipboard.write ? `<button class="btn btn-light btn-sm" id="ps-salin-logo">${icon('copy', 'ic-sm')} Salin logo</button>` : ''}</div></div>`
+        : `<span class="icon-dot sun">${icon('image-plus')}</span><div style="flex:1"><b class="small">Logo belum diunggah</b><div class="tiny muted">Unggah logo di <a href="#/pengaturan/identitas" style="font-weight:700">Pengaturan → Identitas</a> agar poster memakai logo lembaga.</div></div>`}</div>
+      <textarea class="input mt-12" id="l-prompt" rows="12" readonly style="font-size:13px">${esc(buatPrompt(pl, ui.rasio, g))}</textarea>
+      <div class="row-gap mt-12"><button class="btn btn-accent spacer" id="l-salin">${icon('copy')} Salin Prompt</button><a class="btn btn-light" href="https://chatgpt.com/" target="_blank" rel="noopener">${icon('external-link')} Buka ChatGPT</a></div>
+      <ol class="ps-langkah mt-12">${ada ? '<li><b>Unduh logo</b> (atau Salin logo).</li>' : ''}<li><b>Salin prompt</b>, lalu buka ChatGPT.</li>${ada ? '<li>Lampirkan logo (tombol <b>+</b> / 📎 atau tempel), lalu tempel prompt dan kirim.</li>' : '<li>Tempel prompt dan kirim.</li>'}</ol>`;
+  }
+  function pngLogo() {
+    return new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => {
+        const sk = Math.min(1, 1024 / Math.max(im.naturalWidth, im.naturalHeight)) || 1;
+        const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * sk) || 512; c.height = Math.round(im.naturalHeight * sk) || 512;
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        c.toBlob((b) => b ? res(b) : rej(new Error('Gagal membuat PNG')), 'image/png');
+      };
+      im.onerror = () => rej(new Error('Logo tidak bisa dibaca'));
+      im.src = D().settings.logo_data;
+    });
+  }
+  function pasangPoster(pl, ui) {
+    const baca = () => ({ tema: $('#ps-tema').value, w1: $('#ps-w1').value.toUpperCase(), w2: $('#ps-w2').value.toUpperCase(), ucapan: $('#ps-ucapan').value.trim(), catatan: $('#ps-catatan').value.trim() });
+    const segar = () => { const g = baca(); simpanGayaPoster(pl, g); $('#l-prompt').value = buatPrompt(pl, ui.rasio, g); $('#ps-w1-t').textContent = g.w1; $('#ps-w2-t').textContent = g.w2; };
+    $('#ps-tema').onchange = () => {
+      const t = TEMA_POSTER.find((x) => x.id === $('#ps-tema').value);
+      $('#ps-w1').value = (t.w1 || D().settings.warna_utama || '#6B2F8F').toLowerCase(); $('#ps-w2').value = t.w2.toLowerCase();
+      segar();
+    };
+    ['#ps-w1', '#ps-w2', '#ps-ucapan', '#ps-catatan'].forEach((id) => { $(id).oninput = segar; });
+    $('#l-salin').onclick = async () => { if (await U.salin($('#l-prompt').value)) U.toast('Prompt disalin — tempel di ChatGPT' + (D().settings.logo_data ? ' bersama logo' : '')); };
+    const un = $('#ps-unduh');
+    if (un) un.onclick = async () => {
+      try { const b = await pngLogo(); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'Logo-' + U.namaFile(D().settings.nama_lembaga || D().settings.nama_aplikasi || 'lembaga') + '.png'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); U.toast('Logo diunduh'); }
+      catch (e) { U.toast(e.message, 'bad'); }
+    };
+    const sl = $('#ps-salin-logo');
+    if (sl) sl.onclick = async () => {
+      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngLogo() })]); U.toast('Logo disalin — tempel (Ctrl+V) di kotak chat ChatGPT'); }
+      catch (e) { U.toast('Browser tidak mengizinkan salin gambar. Pakai tombol Unduh logo.', 'warn', 6000); }
+    };
   }
 
   // ======================================================================
@@ -137,6 +332,33 @@
     A.mut((d) => { const s = d.landing.find((x) => x.id === id); if (s) fn(s); }, { render: false });
     simpanSeksi(); kirimPratinjau();
   }
+  // ---------------- Warna latar landing page ----------------
+  const LATAR = [['', 'Krem (bawaan)', '#FFF8E7'], ['#FFFFFF', 'Putih', '#FFFFFF'], ['#F5F6FA', 'Abu lembut', '#F5F6FA'], ['utama', 'Senada utama', null],
+    ['#EEF8F1', 'Hijau mint', '#EEF8F1'], ['#EDF5FF', 'Biru langit', '#EDF5FF'], ['#FFF1F4', 'Merah muda', '#FFF1F4'], ['#FBF3E4', 'Pasir', '#FBF3E4']];
+  const nilaiLatar = (k, set) => k === 'utama' ? U.campur(set.warna_utama || '#6B2F8F', 0.92) : k;
+  function kartuLatar(set) {
+    const kini = (set.warna_latar_landing || '').toUpperCase();
+    return `<div class="card card-pad" id="lp-latar"><div class="row-gap mb-12"><span class="icon-dot">${icon('palette')}</span><div style="flex:1"><h3>Warna latar halaman</h3><div class="small muted">Warna dasar landing page, formulir pendaftaran, dan kuitansi</div></div></div>
+      <div class="latar-grid">${LATAR.map(([k, l, c]) => { const v = nilaiLatar(k, set).toUpperCase(); const on = k ? v === kini : !kini; return `<button type="button" class="latar-opt ${on ? 'on' : ''}" data-latar="${esc(k)}" title="${esc(l)}"><i style="background:${esc(c || v)}"></i><span>${esc(l)}</span></button>`; }).join('')}</div>
+      <div class="row-gap mt-12"><label class="latar-kustom"><input type="color" id="lp-latar-c" value="${esc((kini || U.LATAR_BAWAAN).toLowerCase())}"><span class="small strong">Pilih warna lain</span></label><span class="small muted num" id="lp-latar-hex">${esc(kini || U.LATAR_BAWAAN)}</span><span class="spacer"></span><span class="small" id="lp-latar-info"></span></div></div>`;
+  }
+  function pasangLatar() {
+    const el = $('#lp-latar'); if (!el) return;
+    const simpan = U.debounce((v) => {
+      A.kirim({ op: 'saveSettings', values: { warna_latar_landing: v }, _label: 'Warna latar landing' });
+      const st = $('#lp-status'); if (st) st.innerHTML = `${icon('circle-check', 'ic-sm')} Warna latar tersimpan`;
+    }, 600);
+    const pakai = (v) => {
+      if (v && !U.terang(v)) { $('#lp-latar-info', el).innerHTML = `<span style="color:var(--warn-700)">${icon('triangle-alert', 'ic-sm')} Terlalu gelap — pilih warna terang agar teks tetap terbaca</span>`; return; }
+      $('#lp-latar-info', el).textContent = '';
+      A.mut((d) => { d.settings.warna_latar_landing = v; }, { render: false });
+      $('#lp-latar-hex', el).textContent = (v || U.LATAR_BAWAAN).toUpperCase();
+      $$('[data-latar]', el).forEach((b) => { const k = b.dataset.latar; b.classList.toggle('on', k ? nilaiLatar(k, D().settings).toUpperCase() === (v || '').toUpperCase() : !v); });
+      simpan(v); kirimPratinjau();
+    };
+    $$('[data-latar]', el).forEach((b) => b.onclick = () => { const v = nilaiLatar(b.dataset.latar, D().settings); $('#lp-latar-c', el).value = (v || U.LATAR_BAWAAN).toLowerCase(); pakai(v ? v.toUpperCase() : ''); });
+    $('#lp-latar-c', el).oninput = (e) => pakai(e.target.value.toUpperCase());
+  }
   A.page('landing', {
     title: 'Landing Page', crumb: 'Kelola Landing Page',
     render(view) {
@@ -147,7 +369,7 @@
       const seksi = (d.landing || []).slice().sort((a, b) => (+a.urutan || 0) - (+b.urutan || 0));
       view.innerHTML = `<div class="page-head"><div><h1>Kelola Landing Page</h1><p>Atur urutan, tampil/sembunyi, teks, foto, dan video halaman publik. Perubahan tersimpan otomatis.</p></div>
         <div class="actions"><span class="small muted" id="lp-status">${icon('cloud', 'ic-sm')} Simpan otomatis aktif</span><a class="btn btn-light" href="index.html" target="_blank" rel="noopener">${icon('external-link')} Lihat Halaman Publik</a></div></div>
-        <div class="split" style="grid-template-columns:minmax(0,1fr)"><div class="stack" id="lp-list">${seksi.map((s, i) => `<div class="card" data-sek="${s.id}">
+        <div class="split" style="grid-template-columns:minmax(0,1fr)"><div class="stack" id="lp-list">${kartuLatar(d.settings)}${seksi.map((s, i) => `<div class="card" data-sek="${s.id}">
           <div class="sec-row"><div class="row-gap" style="gap:2px;flex-direction:column"><button class="btn btn-ghost btn-icon btn-xs" data-up="${s.id}" ${i === 0 ? 'disabled' : ''} aria-label="Naikkan">${icon('chevron-up')}</button><button class="btn btn-ghost btn-icon btn-xs" data-down="${s.id}" ${i === seksi.length - 1 ? 'disabled' : ''} aria-label="Turunkan">${icon('chevron-down')}</button></div>
             <span class="no">${String(i + 1).padStart(2, '0')}</span><div class="t"><b>${NAMA_SEKSI[s.id] || s.id}</b><div class="tiny muted ellipsis">${DESK_SEKSI[s.id] || ''}</div></div>
             <label class="switch" title="Tampilkan"><input type="checkbox" data-tampil="${s.id}" ${s.tampil !== 'tidak' ? 'checked' : ''}><span class="track"></span></label>
@@ -171,6 +393,7 @@
         fr.src = 'index.html?preview=1';
       }
       $$('[data-mode]').forEach((b) => b.onclick = () => { ui.mode = b.dataset.mode; A.render(); });
+      pasangLatar();
       $$('[data-buka]').forEach((b) => b.onclick = () => { ui.buka = ui.buka === b.dataset.buka ? '' : b.dataset.buka; A.render(); });
       $$('[data-tampil]').forEach((c) => c.onchange = () => { ubahSeksi(c.dataset.tampil, (s) => { s.tampil = c.checked ? 'ya' : 'tidak'; }); U.toast(NAMA_SEKSI[c.dataset.tampil] + (c.checked ? ' ditampilkan' : ' disembunyikan')); });
       const pindah = (id, arah) => {

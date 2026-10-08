@@ -261,8 +261,8 @@ Selama mode demo berlaku hal-hal berikut:
 | 3 | **Pengaturan → Kehadiran** | **Mulai pencatatan kehadiran** (isi tanggal mulai pakai aplikasi), batas absen (bawaan 10 hari les), batas siswa per guru (bawaan 10) |
 | 4 | **Guru** | Tambah guru dan kata sandinya. Guru login dengan memilih namanya dari daftar. |
 | 5 | **Siswa → Impor Excel** | Unduh template, isi data siswa lama, lalu unggah. Data yang belum lengkap tetap bisa masuk dan ditandai "belum lengkap". |
-| 6 | **Hari Libur** | Tandai libur khusus (Senin–Jumat selain libur otomatis dianggap hari les) |
-| 7 | **Landing Page** | Foto **banner** (landscape, ideal 1920×800), teks, foto kegiatan, video, lokasi, dan footer (link Facebook/Instagram/YouTube/TikTok). Di bagian **Lokasi & Peta**, tempel link Google Maps (Bagikan → Salin link) lalu klik **Pasang**, dan titik merah muncul di peta. |
+| 6 | **Hari Libur** | Tandai libur khusus (Senin–Jumat selain libur otomatis dianggap hari les). Kartu **Rekomendasi dari tanggal merah** menampilkan libur nasional & cuti bersama tahun ini dan tahun depan. Tekan **Liburkan** (atau **Liburkan semua**) lalu simpan. |
+| 7 | **Landing Page** | **Warna latar halaman** (pilihan siap pakai atau warna sendiri), foto **banner** (landscape, ideal 1920×800), teks, foto kegiatan, video, lokasi, dan footer (link Facebook/Instagram/YouTube/TikTok). Di bagian **Lokasi & Peta**, tempel link Google Maps (Bagikan → Salin link) lalu klik **Pasang**, dan titik merah muncul di peta. |
 | 8 | **Pengaturan → Piagam** | Unggah gambar template piagam Ahe dan Ala, lalu **Atur Posisi Teks** (kalibrasi). Nomor, Kepala Unit, Unit Pembelajaran, dan Desa/Kelurahan terisi otomatis dari Identitas. |
 | 9 | **Pengaturan → WhatsApp** | Sambungkan Fonnte. Ikuti **PANDUAN-FONNTE.md** (terpisah). Tiap template pesan otomatis bisa **dinonaktifkan** satu per satu lewat sakelar di atas kotak template. |
 
@@ -280,6 +280,9 @@ Selama mode demo berlaku hal-hal berikut:
 - **Keluar** (admin & guru) selalu meminta konfirmasi **Iya / Tidak**.
 - **Draf absen guru:** centangan siswa tersimpan otomatis di HP. Bila aplikasi tertutup sebelum menekan Simpan, centangan muncul lagi saat dibuka (tertulis "Draf absen dipulihkan"). Guru tetap harus menekan **Simpan Kehadiran**.
 - **Alumni sebelum aplikasi:** di **Landing Page → Jumlah Murid**, isi jumlah siswa yang lulus sebelum aplikasi dipakai. Angka ini ditambahkan ke alumni di landing page.
+
+- **Prompt poster libur (ChatGPT):** di **Hari Libur → Buat Prompt Poster**, pilih **tema/gaya** (Ceria, Islami, Nasional, Natal & Tahun Baru, Imlek, Lembut & damai, Liburan sekolah, Resmi), atur **warna utama & pendukung**, ucapan, dan catatan gaya. Tema terpilih otomatis dari nama libur (mis. Idulfitri → Islami). Bila logo sudah diunggah di Identitas: tekan **Unduh logo**, **Salin Prompt**, buka ChatGPT, lampirkan logo, tempel prompt, kirim.
+- **Tanggal merah:** data resmi SKB 3 Menteri untuk 2026 & 2027 sudah tertanam. Tahun berikutnya diambil otomatis dari kalender libur Indonesia milik Google. Tanggal merah hanya rekomendasi — baru menjadi libur les setelah disimpan.
 
 ### D5. Backup & arsip data (Pengaturan → Backup Data)
 - **Buat backup sekarang:** membuat salinan utuh seluruh database ke folder **Backup** di Google Drive (folder `Manajemen Les Ahe & Ala`). Semua backup tetap tersimpan sampai Anda menghapusnya. Tombol **Buka** membuka di Google Sheets, **Excel** mengunduh .xlsx (perlu login ke akun Google pemilik aplikasi).
