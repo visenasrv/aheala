@@ -48,6 +48,7 @@
         U.menu(b, [
           { icon: 'pencil', label: 'Edit data guru', onClick: () => formGuru(g) },
           guruAktif(g) ? { icon: 'key-round', label: (g.punyaSandi ? 'Reset' : 'Buat') + ' kata sandi', onClick: () => resetSandi(g) } : null,
+          guruAktif(g) ? { icon: 'qr-code', label: 'Link login & kode QR', onClick: () => A.bagikanLinkLogin('guru', g) } : null,
           '-',
           { icon: 'trash-2', label: 'Hapus guru', danger: true, onClick: () => hapusGuru(g) }
         ]);
@@ -56,7 +57,7 @@
   });
   function sandiAcak() { const h = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const a = new Uint8Array(8); crypto.getRandomValues(a); return Array.from(a, (b) => h[b % h.length]).join('').replace(/^(.{4})/, '$1-'); }
   function tampilSandi(g, sandi) {
-    const pesan = `Assalamu'alaikum ${g.panggilan || g.nama}. Akun absen aplikasi les Anda:\nNama: ${g.panggilan || g.nama}\nKata sandi: ${sandi}\nLink: ${U.urlBaseFrontend()}app.html`;
+    const pesan = `Assalamu'alaikum ${g.panggilan || g.nama}. Akun absen aplikasi les Anda:\nNama: ${g.panggilan || g.nama}\nKata sandi: ${sandi}\nLink login: ${A.linkLogin('guru', g.id)}`;
     const m = U.modal({
       title: 'Kata sandi untuk ' + (g.panggilan || g.nama), icon: 'key-round', iconCls: 'sun',
       body: `<div class="code-box">${esc(sandi)}</div><div class="note-box bad mt-12">${icon('triangle-alert')}<span>Kata sandi hanya ditampilkan sekali. Kirim langsung ke guru yang bersangkutan.</span></div>`,

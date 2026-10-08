@@ -567,10 +567,10 @@
       const demo = (D().settings || {}).mode_demo === 'ya';
       const tab = params[0] === 'demo' && !demo ? 'identitas' : (params[0] || 'identitas');
       view.innerHTML = `<div class="page-head"><div><h1>Pengaturan</h1><p>Identitas lembaga, pendaftaran, SPP, kehadiran, WhatsApp (Fonnte), akun, piagam, dan backup data.</p></div></div>
-        <div class="tabs mb-16">${[['identitas', 'Identitas', 'palette'], ['pendaftaran', 'Pendaftaran', 'user-plus'], ['spp', 'SPP', 'wallet'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['wa', 'WhatsApp', 'message-circle'], ['akun', 'Akun', 'key-round'], ['piagam', 'Piagam', 'award'], ['backup', 'Backup Data', 'database']].concat(demo ? [['demo', 'Mode Demo', 'sparkles']] : [])
+        <div class="tabs mb-16">${[['identitas', 'Identitas', 'palette'], ['pendaftaran', 'Pendaftaran', 'user-plus'], ['spp', 'SPP', 'wallet'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['wa', 'WhatsApp', 'message-circle'], ['akun', 'Akun', 'key-round'], ['piagam', 'Piagam', 'award'], ['link', 'Link Login', 'qr-code'], ['backup', 'Backup Data', 'database']].concat(demo ? [['demo', 'Mode Demo', 'sparkles']] : [])
           .map(([k, l, ic]) => `<a class="tab ${tab === k ? 'on' : ''}" href="#/pengaturan/${k}">${icon(ic, 'ic-sm')} ${l}</a>`).join('')}</div><div id="set-isi"></div>`;
       const el = $('#set-isi');
-      ({ identitas: setIdentitas, pendaftaran: setDaftar, spp: setSpp, kehadiran: setHadir, wa: setWa, akun: setAkun, demo: setDemo, backup: setBackup, piagam: (x) => window.Piagam ? Piagam.pengaturan(x) : (x.innerHTML = '') }[tab] || setIdentitas)(el);
+      ({ identitas: setIdentitas, pendaftaran: setDaftar, spp: setSpp, kehadiran: setHadir, wa: setWa, akun: setAkun, demo: setDemo, backup: setBackup, link: setLinkLogin, piagam: (x) => window.Piagam ? Piagam.pengaturan(x) : (x.innerHTML = '') }[tab] || setIdentitas)(el);
     }
   });
   function simpanSet(values, label) {
@@ -740,6 +740,73 @@
     $$('[data-ulang]').forEach((b) => b.onclick = () => { const l = (D().logWA || []).find((x) => x.id === b.dataset.ulang); if (l) A.kirimWA({ target: l.tujuan, pesan: l.pesan, jenis: l.jenis, siswaId: l.siswaId, periode: l.periode }); });
   }
   // ---------------------------------------------------------------- Mode demo
+  // ---------------- Link & kode QR login (guru / admin) ----------------
+  A.linkLogin = (peran, guruId) => U.urlBaseFrontend() + 'app.html?login=' + (peran === 'admin' ? 'admin' : 'guru') + (guruId ? '&g=' + encodeURIComponent(guruId) : '');
+  const judulLink = (peran, g) => peran === 'admin' ? 'Login Admin' : g ? 'Login Guru — ' + (g.panggilan || g.nama) : 'Login Guru';
+  function muatGbr(src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
+  // Kartu siap cetak/bagikan: kop lembaga, judul, kode QR besar, petunjuk
+  async function kartuQr(link, judul) {
+    const set = D().settings, W = 1080, H = 1440, warna = /^#[0-9a-f]{6}$/i.test(set.warna_utama || '') ? set.warna_utama : '#6B2F8F';
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
+    g.fillStyle = warna; g.fillRect(0, 0, W, 250); g.fillStyle = '#FFC93C'; g.fillRect(0, 250, W, 10);
+    let x = 70;
+    const logo = set.logo_data ? await muatGbr(set.logo_data) : null;
+    if (logo) { g.fillStyle = '#FFFFFF'; g.beginPath(); if (g.roundRect) g.roundRect(70, 55, 140, 140, 28); else g.rect(70, 55, 140, 140); g.fill(); const sk = Math.min(116 / logo.width, 116 / logo.height); g.drawImage(logo, 140 - logo.width * sk / 2, 125 - logo.height * sk / 2, logo.width * sk, logo.height * sk); x = 240; }
+    const potong = (t, maks) => { t = String(t || ''); while (g.measureText(t).width > maks && t.length > 4) t = t.slice(0, -2); return t; };
+    g.fillStyle = '#FFFFFF'; g.textBaseline = 'middle';
+    g.font = '900 50px "Nunito Sans", Arial, sans-serif'; g.fillText(potong(set.nama_aplikasi || 'Ahe & Ala', W - x - 70), x, 110);
+    g.font = '600 32px "Nunito Sans", Arial, sans-serif'; g.globalAlpha = .9; g.fillText(potong(set.nama_lembaga || '', W - x - 70), x, 170); g.globalAlpha = 1;
+    g.textAlign = 'center'; g.fillStyle = '#2B1B3D';
+    g.font = '900 64px "Nunito Sans", Arial, sans-serif'; g.fillText(potong(judul, W - 120), W / 2, 360);
+    g.font = '600 34px "Nunito Sans", Arial, sans-serif'; g.fillStyle = '#6B5F78'; g.fillText('Pindai kode QR dengan kamera HP', W / 2, 425);
+    const qr = await U.qrCanvas(link, 760);
+    g.fillStyle = '#F3EEF7'; g.beginPath(); if (g.roundRect) g.roundRect(W / 2 - 410, 475, 820, 820, 40); else g.rect(W / 2 - 410, 475, 820, 820); g.fill();
+    g.imageSmoothingEnabled = false; g.drawImage(qr, W / 2 - 380, 505, 760, 760);
+    g.fillStyle = '#6B5F78'; g.font = '600 26px "Nunito Sans", Arial, sans-serif'; g.fillText(potong(link.replace(/^https?:\/\//, ''), W - 100), W / 2, 1345);
+    g.fillStyle = warna; g.font = '800 28px "Nunito Sans", Arial, sans-serif'; g.fillText('Lalu masukkan kata sandi Anda', W / 2, 1395);
+    return c;
+  }
+  const keBlob = (c) => new Promise((res) => c.toBlob(res, 'image/png'));
+  A.bagikanLinkLogin = async (peran, g) => {
+    const link = A.linkLogin(peran, g && g.id), judul = judulLink(peran, g);
+    const m = U.modal({ title: judul, icon: 'qr-code',
+      body: `<div style="text-align:center"><div class="qr-box" id="qr-box"><div class="empty">${icon('loader-circle', 'ic-xl spin')}</div></div>
+        <div class="code-box mt-12" style="font-size:13px;word-break:break-all;text-align:left">${esc(link)}</div>
+        ${peran === 'admin' ? `<div class="note-box bad mt-12" style="text-align:left">${icon('triangle-alert')}<span>Simpan untuk Anda sendiri. Jangan tempel QR admin di tempat umum.</span></div>` : `<p class="small muted mt-12" style="text-align:left">${g ? 'Nama guru sudah terpilih otomatis — guru cukup mengisi kata sandi.' : 'Guru memilih namanya lalu mengisi kata sandi.'} Bila HP sudah login, link langsung membuka aplikasi.</p>`}</div>`,
+      foot: `<button class="btn btn-light" data-salin>${icon('copy')} Salin link</button>${g && g.wa ? `<a class="btn btn-wa" target="_blank" rel="noopener" data-wa href="${U.waLink(g.wa, 'Assalamu\'alaikum ' + (g.panggilan || g.nama) + '. Ini link login aplikasi les untuk absen:\n' + link + '\nSimpan link ini atau tambahkan ke layar utama HP.')}">${icon('message-circle')} Kirim WA</a>` : ''}<button class="btn btn-soft" data-qr disabled>${icon('download')} Unduh QR</button><button class="btn btn-primary" data-kartu disabled>${icon('printer')} Kartu cetak</button>` });
+    m.$('[data-salin]').onclick = async () => { if (await U.salin(link)) U.toast('Link disalin'); };
+    const nama = U.namaFile(judul.replace('—', '-'));
+    try {
+      const qr = await U.qrCanvas(link, 520);
+      const box = m.$('#qr-box'); if (!box) return;
+      box.innerHTML = `<img src="${qr.toDataURL('image/png')}" alt="Kode QR ${esc(judul)}">`;
+      m.$('[data-qr]').disabled = false; m.$('[data-kartu]').disabled = false;
+      m.$('[data-qr]').onclick = async () => U.unduhBlob(await keBlob(await U.qrCanvas(link, 1000)), 'QR-' + nama + '.png');
+      m.$('[data-kartu]').onclick = async () => { const b = await keBlob(await kartuQr(link, judul)); U.unduhBlob(b, 'Kartu-' + nama + '.png'); U.toast('Kartu QR diunduh — siap dicetak atau dibagikan'); };
+    } catch (e) { const box = m.$('#qr-box'); if (box) box.innerHTML = `<p class="small muted">Kode QR gagal dibuat (${esc(e.message || 'periksa koneksi')}). Link tetap bisa disalin.</p>`; }
+  };
+  function setLinkLogin(el) {
+    const t = U.today(), set = D().settings;
+    const guru = (D().guru || []).filter((g) => !g.tglKeluar || g.tglKeluar > t).sort((a, b) => a.nama.localeCompare(b.nama));
+    const baris = (judul, sub, link, attr, ikon, cls) => `<div class="card card-pad"><div class="row-gap mb-12"><span class="icon-dot ${cls || ''}">${icon(ikon)}</span><div style="flex:1;min-width:0"><h3>${judul}</h3><div class="small muted">${sub}</div></div></div>
+      <div class="code-box" style="font-size:13px;word-break:break-all">${esc(link)}</div>
+      <div class="row-gap mt-12"><button class="btn btn-light btn-sm" data-salin-l="${esc(link)}">${icon('copy', 'ic-sm')} Salin</button><button class="btn btn-primary btn-sm" ${attr}>${icon('qr-code', 'ic-sm')} Kode QR & kartu cetak</button></div></div>`;
+    el.innerHTML = `<div class="split half"><div class="stack">
+        ${baris('Link Login Guru', 'Untuk semua guru. Bagikan di grup WA guru atau tempel QR di ruang les.', A.linkLogin('guru'), 'data-ql="guru"', 'graduation-cap', 'ala')}
+        ${baris('Link Login Admin', 'Langsung ke login admin. Simpan untuk Anda sendiri — jangan dibagikan.', A.linkLogin('admin'), 'data-ql="admin"', 'shield-check', 'sun')}
+        <div class="note-box">${icon('info')}<span>Link ini hanya membuka halaman login — tetap perlu kata sandi. Bila HP sudah login dengan akun yang sama, aplikasi langsung terbuka. Tips untuk guru: buka link di Chrome lalu pilih <b>Tambahkan ke layar utama</b> agar muncul seperti aplikasi.</span></div></div>
+      <div class="card"><div class="card-head"><h3>${icon('users')} Link pribadi per guru</h3><span class="chip">${guru.length} guru aktif</span></div>
+        <div class="card-body"><p class="small muted mb-12">Nama guru sudah terpilih otomatis — guru cukup mengisi kata sandi.</p>
+        ${guru.length ? `<div class="ll-list">${guru.map((g) => `<div class="ll-item">${U.avatar(g.nama, g.id, 'av-sm')}<div class="t"><b>${esc(g.panggilan || g.nama)}</b><div class="tiny muted ellipsis">${esc(g.nama)}${g.wa ? ' · ' + esc(U.tampilWa(g.wa)) : ''}</div></div>
+            <button class="btn btn-light btn-icon btn-sm" data-salin-l="${esc(A.linkLogin('guru', g.id))}" aria-label="Salin link ${esc(g.nama)}" title="Salin link">${icon('copy', 'ic-sm')}</button>
+            ${g.wa ? `<a class="btn btn-light btn-icon btn-sm" style="color:var(--wa)" target="_blank" rel="noopener" title="Kirim via WA" aria-label="Kirim link ke WA ${esc(g.nama)}" href="${U.waLink(g.wa, 'Assalamu\'alaikum ' + (g.panggilan || g.nama) + '. Ini link login aplikasi les untuk absen:\n' + A.linkLogin('guru', g.id) + '\nSimpan link ini atau tambahkan ke layar utama HP.')}">${icon('message-circle', 'ic-sm')}</a>` : ''}
+            <button class="btn btn-soft btn-sm" data-qg="${esc(g.id)}">${icon('qr-code', 'ic-sm')}<span class="d-only"> QR</span></button></div>`).join('')}</div>`
+          : A.kosong('users', 'Belum ada guru aktif', 'Tambahkan guru di menu Guru.')}</div></div></div>`;
+    $$('[data-salin-l]', el).forEach((b) => b.onclick = async () => { if (await U.salin(b.dataset.salinL)) U.toast('Link disalin'); });
+    $$('[data-ql]', el).forEach((b) => b.onclick = () => A.bagikanLinkLogin(b.dataset.ql));
+    $$('[data-qg]', el).forEach((b) => b.onclick = () => A.bagikanLinkLogin('guru', guru.find((g) => g.id === b.dataset.qg)));
+  }
   // ---------------- Backup & arsip data ----------------
   const tglJam = (iso) => iso ? U.tgl(String(iso).slice(0, 10)) + ' ' + String(iso).slice(11, 16) : '-';
   const xlsxUrl = (b) => 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(b.id) + '/export?format=xlsx';

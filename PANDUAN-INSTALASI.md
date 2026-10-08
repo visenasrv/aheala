@@ -267,7 +267,7 @@ Selama mode demo berlaku hal-hal berikut:
 | 9 | **Pengaturan → WhatsApp** | Sambungkan Fonnte. Ikuti **PANDUAN-FONNTE.md** (terpisah). Tiap template pesan otomatis bisa **dinonaktifkan** satu per satu lewat sakelar di atas kotak template. |
 
 ### D3. Bagikan ke guru dan orang tua
-- **Guru:** kirim link `.../app.html` dan kata sandinya. Guru bisa mengganti sandinya sendiri di menu **Akun Saya**. Di HP, guru bisa memilih **"Tambahkan ke layar utama"** di menu browser agar aplikasi terbuka seperti app biasa.
+- **Guru:** buka **Pengaturan → Link Login** (atau menu ⋯ di daftar Guru → *Link login & kode QR*). Kirim link pribadi tiap guru lewat WA (nama guru sudah terpilih otomatis, guru cukup mengisi kata sandi), atau unduh **kartu QR** untuk dicetak/ditempel di ruang les. Ada juga link umum guru dan link admin (`app.html?login=admin`, simpan untuk Anda sendiri). Guru bisa mengganti sandinya sendiri di menu **Akun Saya**. Di HP, guru bisa memilih **"Tambahkan ke layar utama"** di menu browser agar aplikasi terbuka seperti app biasa.
 - **Orang tua / umum:** bagikan link utama `https://USERNAME.github.io/les-aheala/`. Pendaftaran bisa dibuka atau ditutup dari **Pengaturan → Pendaftaran**.
 
 ### D4. Fitur harian yang sering dipakai

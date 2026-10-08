@@ -47,8 +47,8 @@
       ${sub ? `<a class="btn btn-ghost btn-icon btn-sm" href="#/" aria-label="Kembali">${icon('arrow-left')}</a>` : ''}
       <a class="pub-brand" href="#/"><span class="lg">${U.logoHtml(s)}</span><span><b>${esc(s.nama_aplikasi || 'Ahe & Ala')}</b><small>${esc(sub || s.slogan || 'Les Baca & Berhitung')}</small></span></a>
       ${sub ? '' : `<nav class="pub-links">${links.map(([id, l]) => `<a href="#/" data-go="${id}">${l}</a>`).join('')}</nav>`}
-      <div class="acts">${sub ? '' : `<a class="btn btn-light btn-sm d-only" href="app.html?masuk=1">Masuk</a>`}
-        ${!sub && buka() ? `<a class="btn btn-accent btn-sm btn-pill" href="#/daftar">Daftar Sekarang</a>` : ''}</div>
+      <div class="acts">${sub ? '' : `<a class="btn btn-light btn-sm btn-masuk" href="app.html?masuk=1" aria-label="Masuk (guru / admin)">${icon('log-in', 'ic-sm')}<span>Masuk</span></a>`}
+        ${!sub && buka() ? `<a class="btn btn-accent btn-sm btn-pill d-only" href="#/daftar">Daftar Sekarang</a>` : ''}</div>
     </div></header>`;
   }
 

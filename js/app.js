@@ -223,9 +223,11 @@
     if (U.siapApi()) U.apiGet({ action: 'getGuruLogin' }).then((l) => {
       U.ls.set(LS_GURU, l);
       if (A.S.token) return;
+      const adaSebelum = ui.guruId && guruList.some((x) => x.id === ui.guruId);
       guruList.length = 0; l.forEach((x) => guruList.push(x));
       const j = $('#jml-guru'); if (j) j.textContent = l.length + ' guru aktif';
-      if (ui.buka) render();
+      if (ui.guruId && !l.some((x) => x.id === ui.guruId)) { ui.guruId = ''; render(); return; }
+      if (ui.buka || (ui.guruId && !adaSebelum)) { const pw = $('#l-pass') && $('#l-pass').value; render(); if (pw && $('#l-pass')) $('#l-pass').value = pw; }
     }).catch(() => { });
   }
 
@@ -572,8 +574,21 @@
     const sesi = U.ls.get(LS_SESI, null);
     // Dibuka dari tombol "Masuk" di landing page → sesi lama di perangkat ini DIAKHIRI dan halaman login tampil.
     // (Mencegah pengunjung masuk ke akun admin/guru yang lupa keluar.)
-    const minta = new URLSearchParams(location.search).has('masuk');
-    if (minta) history.replaceState(null, '', location.pathname);
+    const qs = new URLSearchParams(location.search);
+    const minta = qs.has('masuk');
+    // Link login dari admin: app.html?login=guru[&g=<idGuru>] atau ?login=admin (bisa dijadikan kode QR)
+    const login = qs.get('login'), gId = qs.get('g') || '';
+    if (minta || login) history.replaceState(null, '', location.pathname);
+    if (login === 'guru' || login === 'admin') {
+      const cocok = sesi && sesi.token && sesi.role === login && (!gId || ((sesi.user || {}).id === gId));
+      if (cocok) { lanjutSesi(sesi); return; } // sudah masuk di HP sendiri → langsung buka aplikasi
+      if (sesi && sesi.token) akhiriSesi(sesi);
+      A.ui._login = { peran: login, guruId: login === 'guru' ? gId : '', buka: false };
+      tampilLogin();
+      if (login === 'admin') setTimeout(() => { const u = $('#l-user'); if (u) u.focus(); }, 60);
+      else if (gId) setTimeout(() => { const pw = $('#l-pass'); if (pw) pw.focus(); }, 60);
+      return;
+    }
     if (sesi && sesi.token && minta) {
       if (OB.q.length && navigator.onLine) { // kirim dulu perubahan yang masih antre
         A.S.token = sesi.token; A.S.role = sesi.role;

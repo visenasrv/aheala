@@ -449,7 +449,8 @@
     chart: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js',
     jspdf: 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
     autotable: 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
-    xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+    xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    qr: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'
   };
   const muat = {};
   U.script = (url) => muat[url] || (muat[url] = new Promise((res, rej) => {
@@ -461,7 +462,18 @@
     chart: () => U.script(CDN.chart).then(() => window.Chart),
     pdf: () => U.script(CDN.jspdf).then(() => window.jspdf.jsPDF),
     pdfTable: () => U.script(CDN.jspdf).then(() => U.script(CDN.autotable)).then(() => window.jspdf.jsPDF),
-    xlsx: () => U.script(CDN.xlsx).then(() => window.XLSX)
+    xlsx: () => U.script(CDN.xlsx).then(() => window.XLSX),
+    qr: () => U.script(CDN.qr).then(() => window.qrcode)
+  };
+  // Gambar kode QR ke canvas (ukuran sisi px, dengan tepi putih)
+  U.qrCanvas = async (teks, sisi) => {
+    const qrcode = await U.lib.qr();
+    const q = qrcode(0, 'M'); q.addData(teks); q.make();
+    const n = q.getModuleCount(), tepi = 4, sel = Math.max(1, Math.floor((sisi || 600) / (n + tepi * 2)));
+    const c = document.createElement('canvas'); c.width = c.height = sel * (n + tepi * 2);
+    const g = c.getContext('2d'); g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#111111';
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) g.fillRect((k + tepi) * sel, (r + tepi) * sel, sel, sel);
+    return c;
   };
   U.unduhBlob = (blob, nama) => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nama;
