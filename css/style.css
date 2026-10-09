@@ -949,9 +949,16 @@ body.public .ann { margin-top: 28px; }
 @media (max-width: 330px) { .btn-masuk span { display: none; } }
 .qr-box { width: 260px; max-width: 100%; margin: 0 auto; aspect-ratio: 1; border-radius: 16px; border: 1px solid var(--line); background: #fff; display: grid; place-items: center; overflow: hidden; }
 .qr-box img { width: 100%; height: 100%; image-rendering: pixelated; }
-.ll-list { display: grid; }
+.ll-list { display: grid; grid-template-columns: minmax(0, 1fr); }
 .ll-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-2); }
 .ll-item:first-child { border-top: 0; }
-.ll-item .t { flex: 1; min-width: 0; }
+.ll-item .t { flex: 1 1 0; min-width: 0; overflow: hidden; }
 .chip-x { border: 0; background: none; padding: 0 0 0 2px; margin-left: 2px; cursor: pointer; color: inherit; display: inline-flex; opacity: .7; }
 .chip-x:hover { opacity: 1; }
+
+/* Sub-menu Pengaturan: semua tampil tanpa geser (grid otomatis) */
+.tabs.tabs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); overflow: visible; gap: 8px; }
+.tabs.tabs-grid .tab { justify-content: center; padding: 0 12px; }
+@media (max-width: 640px) { .tabs.tabs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .tabs.tabs-grid .tab { min-height: 38px; font-size: 13px; padding: 0 8px; } }
+.split > * { min-width: 0; }
+@media (min-width: 1100px) { .tabs.tabs-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }

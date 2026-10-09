@@ -567,7 +567,7 @@
       const demo = (D().settings || {}).mode_demo === 'ya';
       const tab = params[0] === 'demo' && !demo ? 'identitas' : (params[0] || 'identitas');
       view.innerHTML = `<div class="page-head"><div><h1>Pengaturan</h1><p>Identitas lembaga, pendaftaran, SPP, kehadiran, WhatsApp (Fonnte), akun, piagam, dan backup data.</p></div></div>
-        <div class="tabs mb-16">${[['identitas', 'Identitas', 'palette'], ['pendaftaran', 'Pendaftaran', 'user-plus'], ['spp', 'SPP', 'wallet'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['wa', 'WhatsApp', 'message-circle'], ['akun', 'Akun', 'key-round'], ['piagam', 'Piagam', 'award'], ['link', 'Link Login', 'qr-code'], ['backup', 'Backup Data', 'database']].concat(demo ? [['demo', 'Mode Demo', 'sparkles']] : [])
+        <div class="tabs tabs-grid mb-16">${[['identitas', 'Identitas', 'palette'], ['pendaftaran', 'Pendaftaran', 'user-plus'], ['spp', 'SPP', 'wallet'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['wa', 'WhatsApp', 'message-circle'], ['akun', 'Akun', 'key-round'], ['piagam', 'Piagam', 'award'], ['link', 'Link Login', 'qr-code'], ['backup', 'Backup Data', 'database']].concat(demo ? [['demo', 'Mode Demo', 'sparkles']] : [])
           .map(([k, l, ic]) => `<a class="tab ${tab === k ? 'on' : ''}" href="#/pengaturan/${k}">${icon(ic, 'ic-sm')} ${l}</a>`).join('')}</div><div id="set-isi"></div>`;
       const el = $('#set-isi');
       ({ identitas: setIdentitas, pendaftaran: setDaftar, spp: setSpp, kehadiran: setHadir, wa: setWa, akun: setAkun, demo: setDemo, backup: setBackup, link: setLinkLogin, piagam: (x) => window.Piagam ? Piagam.pengaturan(x) : (x.innerHTML = '') }[tab] || setIdentitas)(el);
