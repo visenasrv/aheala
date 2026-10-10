@@ -123,18 +123,19 @@
         </div>
         <div class="stack">
           <div class="card card-pad"><h3 class="mb-12">${icon('qr-code')} Logo & kode QR</h3>
-            <div class="ps-logo">${set.logo_data ? `<div class="lg"><img src="${esc(set.logo_data)}" alt="Logo"></div><div style="flex:1;min-width:0"><b class="small">Logo lembaga</b><div class="tiny muted">Dilampirkan di ChatGPT bersama prompt</div><button class="btn btn-soft btn-sm mt-8" id="pr-unduh-logo">${icon('download', 'ic-sm')} Unduh logo</button></div>`
+            <div class="ps-logo">${set.logo_data ? `<div class="lg"><img src="${esc(set.logo_data)}" alt="Logo"></div><div style="flex:1;min-width:0"><b class="small">Logo lembaga</b><div class="tiny muted">Dilampirkan di ChatGPT bersama prompt</div><div class="row-gap mt-8" style="gap:6px"><button class="btn btn-primary btn-sm" id="pr-salin-logo">${icon('copy', 'ic-sm')} Salin logo</button><button class="btn btn-light btn-sm" id="pr-unduh-logo">${icon('download', 'ic-sm')} Unduh</button></div></div>`
               : `<span class="icon-dot sun">${icon('image-plus')}</span><div style="flex:1"><b class="small">Logo belum diunggah</b><div class="tiny muted">${A.S.role === 'admin' ? 'Unggah di <a href="#/pengaturan/identitas" style="font-weight:700">Pengaturan → Identitas</a>.' : 'Minta admin utama mengunggah logo.'}</div></div>`}</div>
             <label class="switch mt-12"><input type="checkbox" id="pr-qr" ${o.qr ? 'checked' : ''}><span class="track"></span><span class="small strong">Tambahkan kode QR di poster</span></label>
             <div id="pr-qr-isi" class="${o.qr ? '' : 'hidden'}"><div class="row-gap mt-12" style="align-items:flex-start"><div class="qr-mini" id="pr-qr-img"></div><div style="flex:1;min-width:0" class="form-stack">
               <div class="field"><label>QR menuju</label><div class="seg full">${[['landing', 'Website'], ['daftar', 'Formulir daftar']].map(([k, l]) => `<button type="button" data-qrke="${k}" class="${o.qrKe === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
               <div class="tiny muted" style="word-break:break-all" id="pr-qr-url">${esc(urlQr(o))}</div>
               <div class="field"><label for="pr-qrteks">Tulisan di bawah QR</label><input class="input" id="pr-qrteks" maxlength="60" value="${esc(o.qrTeks)}"></div>
-              <button class="btn btn-soft btn-sm" id="pr-unduh-qr">${icon('download', 'ic-sm')} Unduh kode QR</button></div></div></div></div>
+              <div class="row-gap" style="gap:6px"><button class="btn btn-primary btn-sm" id="pr-salin-qr">${icon('copy', 'ic-sm')} Salin kode QR</button><button class="btn btn-light btn-sm" id="pr-unduh-qr">${icon('download', 'ic-sm')} Unduh</button></div></div></div></div></div>
           <div class="card card-pad" style="border:2px solid var(--p-100);position:sticky;top:80px"><div class="row-gap mb-12"><span class="icon-dot acc">${icon('wand-sparkles')}</span><div style="flex:1"><h3>Prompt ChatGPT</h3><div class="small muted">Diperbarui otomatis</div></div></div>
             <textarea class="input" id="pr-prompt" rows="14" readonly style="font-size:13px"></textarea>
             <div class="row-gap mt-12"><button class="btn btn-accent spacer" id="pr-salin">${icon('copy')} Salin Prompt</button><a class="btn btn-light" href="https://chatgpt.com/" target="_blank" rel="noopener">${icon('external-link')} Buka ChatGPT</a></div>
-            <ol class="ps-langkah mt-12">${set.logo_data ? '<li><b>Unduh logo</b>.</li>' : ''}<li id="pr-l-qr"><b>Unduh kode QR</b>.</li><li><b>Salin prompt</b>, buka ChatGPT.</li><li>Lampirkan ${set.logo_data ? 'logo' : ''}<span id="pr-l-qr2"> &amp; kode QR</span> (tombol <b>+</b> / 📎), tempel prompt, kirim.</li><li>Setelah jadi, <b>pindai QR di hasil poster</b> untuk memastikan masih bisa dibuka.</li></ol>
+            <button class="btn btn-soft btn-block mt-8 hidden" id="pr-bagikan">${icon('share-2')} Bagikan logo + QR + prompt (HP)</button>
+            <ol class="ps-langkah mt-12"><li>Buka ChatGPT di tab lain.</li>${set.logo_data ? '<li>Tekan <b>Salin logo</b> → di kotak chat ChatGPT tekan <b>Ctrl+V</b> (HP: tahan lalu <b>Tempel</b>).</li>' : ''}<li id="pr-l-qr">Tekan <b>Salin kode QR</b> → tempel lagi di kotak chat.</li><li>Tekan <b>Salin Prompt</b> → tempel, lalu kirim.</li><li>Setelah jadi, <b>pindai QR di hasil poster</b> untuk memastikan masih bisa dibuka.</li></ol>
             <button class="btn btn-ghost btn-sm mt-8" id="pr-reset">${icon('rotate-ccw', 'ic-sm')} Kembalikan pengaturan awal</button></div>
         </div></div>`;
       if (window.innerWidth >= 1100) $('.split', view).style.gridTemplateColumns = 'minmax(0,1fr) minmax(0,1fr)';
@@ -159,13 +160,39 @@
         $('#pr-prompt').value = buatPrompt(x);
         $('#pr-w1-t').textContent = x.w1; $('#pr-w2-t').textContent = x.w2; $('#pr-latar-t').textContent = x.latar || 'Otomatis';
         $('#pr-kustom').classList.toggle('hidden', x.ukuran !== 'kustom');
-        $('#pr-qr-isi').classList.toggle('hidden', !x.qr); $('#pr-l-qr').classList.toggle('hidden', !x.qr); $('#pr-l-qr2').classList.toggle('hidden', !x.qr);
+        $('#pr-qr-isi').classList.toggle('hidden', !x.qr); $('#pr-l-qr').classList.toggle('hidden', !x.qr);
         if (x.qr) gambarQr(x);
       };
       $$('input, select, textarea', view).forEach((el) => { if (el.id === 'pr-prompt' || el.id === 'pr-latar') return; el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', segar); });
       $('#pr-latar').oninput = (e) => { const x = baca(); x.latar = e.target.value.toUpperCase(); simpan(x); segar(); };
       $$('[data-prog]').forEach((b) => b.onclick = () => { const x = baca(); x.program = b.dataset.prog; simpan(x); $$('[data-prog]').forEach((y) => y.classList.toggle('on', y === b)); segar(); });
       $$('[data-qrke]').forEach((b) => b.onclick = () => { const x = baca(); x.qrKe = b.dataset.qrke; simpan(x); $$('[data-qrke]').forEach((y) => y.classList.toggle('on', y === b)); segar(); });
+      // Salin gambar langsung ke papan klip (tempel di ChatGPT dengan Ctrl+V)
+      const bisaSalinGambar = !!(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write);
+      const qrBlob = () => U.qrCanvas(urlQr(baca()), 1000).then((c) => new Promise((res) => c.toBlob(res, 'image/png')));
+      const salinGambar = async (blobJanji, nama) => {
+        if (!bisaSalinGambar) { U.toast('Browser ini belum bisa menyalin gambar. Pakai tombol Unduh lalu lampirkan.', 'warn', 6000); return; }
+        try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobJanji })]); U.toast(nama + ' disalin — tempel (Ctrl+V) di kotak chat ChatGPT'); }
+        catch (e) { U.toast('Gagal menyalin ' + nama.toLowerCase() + '. Pakai tombol Unduh lalu lampirkan.', 'warn', 6000); }
+      };
+      const sl = $('#pr-salin-logo'); if (sl) sl.onclick = () => salinGambar(A.pngLogo(), 'Logo');
+      $('#pr-salin-qr').onclick = () => salinGambar(qrBlob(), 'Kode QR');
+      // HP: bagikan logo + QR + prompt sekaligus ke aplikasi ChatGPT
+      const bg = $('#pr-bagikan');
+      (async () => {
+        try {
+          const contoh = new File([new Blob(['x'], { type: 'image/png' })], 'a.png', { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [contoh] })) bg.classList.remove('hidden');
+        } catch (e) { /* tidak didukung */ }
+      })();
+      bg.onclick = async () => {
+        try {
+          const files = [];
+          if (set.logo_data) files.push(new File([await A.pngLogo()], 'logo.png', { type: 'image/png' }));
+          if (baca().qr) files.push(new File([await qrBlob()], 'kode-qr.png', { type: 'image/png' }));
+          await navigator.share({ files, text: $('#pr-prompt').value, title: 'Prompt poster promosi' });
+        } catch (e) { if (e && e.name !== 'AbortError') U.toast('Tidak bisa membagikan. Pakai tombol Salin.', 'warn'); }
+      };
       $('#pr-salin').onclick = async () => { if (await U.salin($('#pr-prompt').value)) U.toast('Prompt disalin — lampirkan logo & QR lalu tempel di ChatGPT'); };
       const ul = $('#pr-unduh-logo');
       if (ul) ul.onclick = async () => { try { U.unduhBlob(await A.pngLogo(), 'Logo-' + U.namaFile(set.nama_lembaga || set.nama_aplikasi || 'lembaga') + '.png'); U.toast('Logo diunduh'); } catch (e) { U.toast(e.message, 'bad'); } };
