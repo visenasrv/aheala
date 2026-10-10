@@ -962,3 +962,31 @@ body.public .ann { margin-top: 28px; }
 @media (max-width: 640px) { .tabs.tabs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .tabs.tabs-grid .tab { min-height: 38px; font-size: 13px; padding: 0 8px; } }
 .split > * { min-width: 0; }
 @media (min-width: 1100px) { .tabs.tabs-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+/* ---------- v1.6: video dari mana saja ---------- */
+.vthumb .src.facebook { background: #1877F2; }
+.vthumb .src.tiktok { background: #111; }
+.vthumb .src.instagram { background: linear-gradient(45deg, #F58529, #DD2A7B, #8134AF); }
+.vthumb .src.drive { background: #1A73E8; }
+.vthumb .src.vimeo { background: #1AB7EA; }
+.vthumb .src.file, .vthumb .src.lain { background: var(--p-800); }
+.vthumb.tegak { aspect-ratio: 9/16; max-height: 640px; }
+.vthumb video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; }
+.vthumb.src-tiktok { background: linear-gradient(160deg, #111, #2b2b2b 60%, #25F4EE 140%); }
+.vthumb.src-instagram { background: linear-gradient(160deg, #8134AF, #DD2A7B 60%, #F58529); }
+@media (min-width: 768px) { .vids:not(.satu) .vthumb.tegak { max-height: 520px; } .vcard.tegak .vthumb { margin: 0 auto; width: 100%; } }
+.vids.satu .vthumb.tegak { max-width: 360px; margin: 0 auto; }
+.fb-cek.tegak { aspect-ratio: 9/16; max-width: 300px; }
+.fb-cek video { width: 100%; height: 100%; border-radius: 10px; background: #000; }
+.chip.vsrc-youtube { background: #FEE2E2; color: #B91C1C; } .chip.vsrc-facebook { background: #DBEAFE; color: #1D4ED8; }
+.chip.vsrc-tiktok { background: #111; color: #fff; } .chip.vsrc-instagram { background: #FCE7F3; color: #BE185D; }
+/* ---------- Promosi ---------- */
+.pr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-chip { position: relative; cursor: pointer; }
+.pr-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.pr-chip span { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border-radius: 99px; border: 1.5px solid var(--line); background: #fff; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.pr-chip input:checked + span { background: var(--p-50); border-color: var(--p); color: var(--p-800); }
+.pr-chip input:checked + span::before { content: '✓'; margin-right: 6px; font-weight: 800; }
+.pr-chip input:focus-visible + span { outline: 2px solid var(--p); outline-offset: 2px; }
+.qr-mini { width: 120px; height: 120px; flex: none; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; display: grid; place-items: center; }
+.qr-mini img { width: 100%; height: 100%; image-rendering: pixelated; }

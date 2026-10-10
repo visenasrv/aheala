@@ -109,7 +109,9 @@
   }
   A.pill = pill;
   // Bersihkan data & antrean di perangkat ini (setelah data server dikosongkan / diisi ulang)
-  A.resetLokal = () => { ['admin', 'guru'].forEach((r) => U.ls.del(LS_DATA + r)); OB.q = []; simpanOB(); };
+  A.resetLokal = () => { ['admin', 'guru', 'wakil'].forEach((r) => U.ls.del(LS_DATA + r)); OB.q = []; simpanOB(); };
+  A.sebagaiGuru = () => A.S.role === 'guru' || A.S.role === 'wakil';
+  A.NAMA_PERAN = { admin: 'Admin', guru: 'Guru', wakil: 'Wakil Admin' };
 
   // Muat ulang data dari server (latar belakang)
   A.segarkan = async () => {
@@ -142,10 +144,10 @@
   }
   A.keluar = async () => {
     const nama = (A.S.user && (A.S.user.panggilan || A.S.user.nama)) || '';
-    const draf = A.S.role === 'guru' && A.drafAbsen && A.drafAbsen.ada();
+    const draf = A.sebagaiGuru() && A.drafAbsen && A.drafAbsen.ada();
     const ok = await U.confirm({
       title: 'Keluar dari aplikasi?',
-      text: 'Anda akan keluar dari akun <b>' + esc(A.S.role === 'admin' ? 'Admin' : 'Guru') + (nama ? ' · ' + esc(nama) : '') + '</b>. Untuk masuk lagi diperlukan kata sandi.' +
+      text: 'Anda akan keluar dari akun <b>' + esc(A.NAMA_PERAN[A.S.role] || 'Guru') + (nama ? ' · ' + esc(nama) : '') + '</b>. Untuk masuk lagi diperlukan kata sandi.' +
         (draf ? '<br><br>Centangan absen yang belum disimpan tetap aman sebagai <b>draf</b> di perangkat ini.' : ''),
       ok: 'Iya, keluar', batal: 'Tidak'
     });
@@ -174,7 +176,7 @@
     document.body.classList.remove('logged');
     const guruList = U.ls.get(LS_GURU, []) || [];
     const ui = A.ui._login = A.ui._login || { peran: 'guru', guruId: '', buka: false };
-    const cache = U.ls.get(LS_DATA + 'admin', null) || U.ls.get(LS_DATA + 'guru', null);
+    const cache = U.ls.get(LS_DATA + 'admin', null) || U.ls.get(LS_DATA + 'wakil', null) || U.ls.get(LS_DATA + 'guru', null);
     const set = (cache && cache.settings) || U.ls.get('ahe_landing_v1', {}).settings || {};
     U.applyTheme(set.warna_utama);
     const render = () => {
@@ -237,7 +239,7 @@
     U.ls.set(LS_SESI, { token: d.token, role, user: d.user });
     delete d.token;
     // data milik akun lain di perangkat ini dibuang
-    U.ls.del(LS_DATA + (role === 'admin' ? 'guru' : 'admin'));
+    ['admin', 'guru', 'wakil'].filter((r) => r !== role).forEach((r) => U.ls.del(LS_DATA + r));
     terimaData(d);
     A.ui = {};
     location.hash = role === 'admin' ? '#/dashboard' : '#/absen';
@@ -281,26 +283,30 @@
   const NAV_ADMIN = [
     ['dashboard', 'Dashboard', 'layout-dashboard'], ['pendaftar', 'Pendaftar Baru', 'user-plus'], ['siswa', 'Siswa', 'graduation-cap'],
     ['guru', 'Guru', 'users'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['spp', 'SPP & Kuitansi', 'receipt'],
-    ['piagam', 'Piagam', 'award'], ['libur', 'Hari Libur', 'calendar-x'], ['landing', 'Landing Page', 'layout-template'], ['pengaturan', 'Pengaturan', 'settings']
+    ['piagam', 'Piagam', 'award'], ['libur', 'Hari Libur', 'calendar-x'], ['landing', 'Landing Page', 'layout-template'], ['promosi', 'Promosi', 'sparkles'], ['pengaturan', 'Pengaturan', 'settings']
   ];
   const NAV_GURU = [['absen', 'Absen Hari Ini', 'calendar-check'], ['riwayat', 'Riwayat Saya', 'history'], ['akun', 'Akun Saya', 'key-round']];
+  // Wakil admin: menu guru + sebagian menu admin
+  const NAV_WAKIL = [['absen', 'Absen Hari Ini', 'calendar-check'], ['riwayat', 'Riwayat Saya', 'history'], ['spp', 'SPP (Draf)', 'receipt'], ['piagam', 'Cetak Piagam', 'award'],
+    ['libur', 'Hari Libur', 'calendar-x'], ['landing', 'Landing Page', 'layout-template'], ['promosi', 'Promosi', 'sparkles'], ['akun', 'Akun Saya', 'key-round']];
   A.badge = (k) => {
     const d = A.S.data;
     if (!d || A.S.role !== 'admin') return 0;
     if (k === 'pendaftar') return (d.siswa || []).filter((s) => s.statusDaftar === 'menunggu').length;
     if (k === 'piagam') return Rules.peringatan().piagam.length;
+    if (k === 'spp') return (d.drafSpp || []).filter((x) => x.status === 'menunggu').length;
     return 0;
   };
 
   function shell() {
     const d = A.S.data, set = d.settings || {};
-    const admin = A.S.role === 'admin';
-    const nav = admin ? NAV_ADMIN : NAV_GURU;
+    const admin = A.S.role === 'admin', wakil = A.S.role === 'wakil';
+    const nav = admin ? NAV_ADMIN : wakil ? NAV_WAKIL : NAV_GURU;
     appEl.innerHTML = `<div class="app-shell">
       <aside class="sidebar"><div class="brand"><span class="logo">${U.logoHtml(set, '<span style="color:var(--p);font-weight:900;font-size:22px;font-family:var(--f-head)">A</span>')}</span><div style="min-width:0"><div class="t1 ellipsis">${esc(set.nama_aplikasi || 'Ahe & Ala')}</div><div class="t2">Les Baca & Berhitung</div></div></div>
-        <div class="nav-sec">${admin ? 'Navigasi Utama' : 'Menu Guru'}</div>
+        <div class="nav-sec">${admin ? 'Navigasi Utama' : wakil ? 'Menu Wakil Admin' : 'Menu Guru'}</div>
         <nav class="nav" id="snav">${nav.map(([k, l, ic]) => `<a href="#/${k}" data-nav="${k}">${icon(ic)}<span>${l}</span><span class="count hidden" data-count="${k}"></span></a>`).join('')}</nav>
-        <div class="side-user">${U.avatar(A.S.user.nama, A.S.user.id || 'admin', 'av-sm')}<div class="who">${esc(A.S.user.nama)}<small>${admin ? 'Admin Utama' : 'Guru'} · ${esc(set.nama_unit || '')}</small></div><button data-keluar title="Keluar" aria-label="Keluar">${icon('log-out')}</button></div>
+        <div class="side-user">${U.avatar(A.S.user.nama, A.S.user.id || 'admin', 'av-sm')}<div class="who">${esc(A.S.user.nama)}<small>${admin ? 'Admin Utama' : wakil ? 'Wakil Admin' : 'Guru'} · ${esc(set.nama_unit || '')}</small></div><button data-keluar title="Keluar" aria-label="Keluar">${icon('log-out')}</button></div>
       </aside>
       <div class="main">
         ${set.mode_demo === 'ya' ? `<div class="demo-bar">${icon('sparkles', 'ic-sm')}<span><b>Mode Demo</b><span class="d-only"> — semua data adalah contoh. WA untuk orang tua dialihkan ke nomor admin.</span><span class="m-only"> · data contoh</span></span>${admin ? '<a href="#/pengaturan/demo">Akhiri mode demo</a>' : ''}</div>` : ''}
@@ -310,8 +316,8 @@
           <button class="btn btn-ghost btn-icon btn-sm m-only" data-keluar aria-label="Keluar" title="Keluar">${icon('log-out')}</button></header>
         <main class="view" id="view"></main>
       </div>
-      <nav class="bnav" id="bnav">${admin
-        ? [['dashboard', 'Dashboard', 'layout-dashboard'], ['siswa', 'Siswa', 'graduation-cap'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['spp', 'SPP', 'receipt']].map(([k, l, ic]) => `<a href="#/${k}" data-nav="${k}">${icon(ic)}${l}</a>`).join('') + `<button data-lainnya>${icon('menu')}Lainnya<span class="count hidden" data-count="lainnya"></span></button>`
+      <nav class="bnav" id="bnav">${admin || wakil
+        ? (admin ? [['dashboard', 'Dashboard', 'layout-dashboard'], ['siswa', 'Siswa', 'graduation-cap'], ['kehadiran', 'Kehadiran', 'calendar-check'], ['spp', 'SPP', 'receipt']] : [['absen', 'Absen', 'calendar-check'], ['riwayat', 'Riwayat', 'history'], ['spp', 'SPP', 'receipt'], ['piagam', 'Piagam', 'award']]).map(([k, l, ic]) => `<a href="#/${k}" data-nav="${k}">${icon(ic)}${l}</a>`).join('') + `<button data-lainnya>${icon('menu')}Lainnya<span class="count hidden" data-count="lainnya"></span></button>`
         : NAV_GURU.map(([k, l, ic]) => `<a href="#/${k}" data-nav="${k}">${icon(ic)}${l.split(' ')[0]}</a>`).join('') + `<button data-keluar>${icon('log-out')}Keluar</button>`}</nav>
     </div>`;
     $$('[data-keluar]').forEach((b) => b.onclick = A.keluar);
@@ -319,7 +325,7 @@
     if (l) l.onclick = () => {
       const m = U.modal({
         title: 'Menu lainnya', icon: 'menu', foot: false,
-        body: `<div class="more-grid">${NAV_ADMIN.map(([k, lb, ic]) => { const c = A.badge(k); return `<a href="#/${k}" data-m>${c ? `<span class="count">${c}</span>` : ''}<span class="icon-dot">${icon(ic)}</span>${lb}</a>`; }).join('')}</div>
+        body: `<div class="more-grid">${(admin ? NAV_ADMIN : NAV_WAKIL).map(([k, lb, ic]) => { const c = A.badge(k); return `<a href="#/${k}" data-m>${c ? `<span class="count">${c}</span>` : ''}<span class="icon-dot">${icon(ic)}</span>${lb}</a>`; }).join('')}</div>
           <button class="btn btn-danger-ghost btn-block mt-16" data-k>${icon('log-out')} Keluar</button>`
       });
       m.$$('[data-m]').forEach((a) => a.onclick = () => m.close());
@@ -331,7 +337,7 @@
     $$('[data-nav]').forEach((a) => a.classList.toggle('on', a.dataset.nav === k));
     if (A.S.role !== 'admin') return;
     let lain = 0;
-    ['pendaftar', 'piagam'].forEach((x) => {
+    ['pendaftar', 'piagam', 'spp'].forEach((x) => {
       const c = A.badge(x); lain += c;
       $$(`[data-count="${x}"]`).forEach((el) => { el.textContent = c; el.classList.toggle('hidden', !c); });
     });
@@ -346,18 +352,20 @@
     const [jalur, qs] = h.split('?');
     const seg = jalur.split('/').filter(Boolean).map(decodeURIComponent);
     let nama = seg[0] || (A.S.role === 'admin' ? 'dashboard' : 'absen');
+    if (A.S.role === 'wakil' && nama === 'pengaturan' && seg[1] === 'piagam') nama = '__tolak'; // atur template piagam: admin utama saja
     let params = seg.slice(1);
     if (nama === 'siswa' && params[0] === 'impor') { nama = 'impor'; params = []; }
     else if (nama === 'siswa' && params[0]) { nama = 'detail'; }
     const pg = A.pages[nama];
-    const izin = pg && (pg.role || 'admin') === A.S.role;
+    const peranHal = pg && (pg.role || 'admin');
+    const izin = pg && (peranHal === A.S.role || (A.S.role === 'wakil' && (peranHal === 'guru' || pg.wakil)));
     if (!izin) { location.replace('#/' + (A.S.role === 'admin' ? 'dashboard' : 'absen')); return; }
     const ganti = rute.nama !== nama || rute.params.join('/') !== params.join('/');
     rute = { nama, params, qs: new URLSearchParams(qs || '') };
     const view = $('#view');
     if (!view) { shell(); return A.render(); }
     const crumb = typeof pg.crumb === 'function' ? pg.crumb(params) : (pg.crumb || pg.title);
-    $('#crumb').innerHTML = `<small>${A.S.role === 'admin' ? 'Admin' : 'Guru'}${crumb !== pg.title ? ' / ' + esc(pg.title) : ''}</small><b>${esc(crumb)}</b>`;
+    $('#crumb').innerHTML = `<small>${A.NAMA_PERAN[A.S.role] || 'Guru'}${crumb !== pg.title ? ' / ' + esc(pg.title) : ''}</small><b>${esc(crumb)}</b>`;
     document.title = crumb + ' · ' + ((A.S.data.settings || {}).nama_aplikasi || 'Ahe & Ala');
     navAktif(pg.nav || nama);
     try { pg.render(view, params, rute.qs); }
@@ -535,7 +543,7 @@
     }
   });
   A.hasil.hadir = (op, data) => {
-    if (A.S.role !== 'guru' || !data) return;
+    if (!A.sebagaiGuru() || !data) return;
     if (data.ditolak && data.ditolak.length) {
       const nama = data.ditolak.map((id) => ((A.S.data.siswaAktif || []).find((s) => s.id === id) || {}).nama).filter(Boolean);
       U.toast(nama.join(', ') + ' sudah dicatat guru lain hari ini', 'warn', 7000);
@@ -580,7 +588,7 @@
     const login = qs.get('login'), gId = qs.get('g') || '';
     if (minta || login) history.replaceState(null, '', location.pathname);
     if (login === 'guru' || login === 'admin') {
-      const cocok = sesi && sesi.token && sesi.role === login && (!gId || ((sesi.user || {}).id === gId));
+      const cocok = sesi && sesi.token && (sesi.role === login || (login === 'guru' && sesi.role === 'wakil')) && (!gId || ((sesi.user || {}).id === gId));
       if (cocok) { lanjutSesi(sesi); return; } // sudah masuk di HP sendiri → langsung buka aplikasi
       if (sesi && sesi.token) akhiriSesi(sesi);
       A.ui._login = { peran: login, guruId: login === 'guru' ? gId : '', buka: false };

@@ -16,6 +16,8 @@ Fonnte adalah layanan *WhatsApp gateway*. Aplikasi Anda "meminjam" satu nomor Wh
 | SPP ditandai lunas (jika dicentang "kirim link kuitansi") | Orang tua | Kuitansi SPP (berisi **link** kuitansi) |
 | **Otomatis setiap hari les pukul 07.00 WITA**: siswa menunggak **2 bulan berturut-turut** | Orang tua | Tunggakan SPP 2 Bulan |
 | **Otomatis pukul 07.00 WITA**: siswa tidak masuk **≥ 10 hari les** | Admin | Siswa Tidak Masuk – ke Admin |
+| **Otomatis pukul 07.00 WITA**: siswa tidak masuk **≥ 10 hari les** (sekali per periode) | Orang tua | Tidak Masuk – ke Orang Tua |
+| Admin menekan **Naik 1 Level** dan mencentang "Kirim WhatsApp ucapan naik level" | Orang tua | Naik Level – ke Orang Tua |
 | Admin menekan tombol WA di detail siswa atau di halaman SPP | Orang tua | Pesan bebas atau pengingat |
 
 Aturan anti-dobel:
@@ -113,7 +115,8 @@ Kata dalam kurung kurawal akan diganti otomatis:
 | `{ortu}` | Nama orang tua |
 | `{program}` | Les Baca (Ahe) / Les Berhitung (Ala) |
 | `{kode}` | Kode registrasi |
-| `{level}` | Level awal (template "Diterima") |
+| `{level}` | Level awal (template "Diterima") / level baru (template "Naik Level") |
+| `{level_lama}` | Level sebelumnya (template "Naik Level") |
 | `{wa}` | Nomor WA orang tua |
 | `{bulan_tunggakan}` | Contoh: "September & Oktober 2026" |
 | `{total}` | Contoh: "Rp300.000" |

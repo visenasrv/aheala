@@ -159,13 +159,13 @@
   // HALAMAN PIAGAM
   // ======================================================================
   A.page('piagam', {
-    title: 'Piagam', crumb: 'Piagam Kelulusan',
+    title: 'Piagam', crumb: 'Piagam Kelulusan', wakil: true,
     render(view, params) {
       const sub = params[0] || 'siap';
       const pr = R.peringatan();
       const jml = (D().piagam.ahe || []).length + (D().piagam.ala || []).length;
       const atas = `<div class="page-head"><div><h1>Piagam Kelulusan</h1><p>Buat piagam dari siswa yang sudah tuntas tanpa mengetik ulang datanya. Unduh dalam PDF (A4 landscape) atau JPG.</p></div>
-        <div class="actions"><a class="btn btn-light" href="#/pengaturan/piagam">${icon('settings')} Pengaturan Piagam</a></div></div>
+        <div class="actions">${A.S.role === 'admin' ? `<a class="btn btn-light" href="#/pengaturan/piagam">${icon('settings')} Pengaturan Piagam</a>` : `<span class="chip">${icon('lock', 'ic-sm')} Template & posisi teks diatur admin utama</span>`}</div></div>
         <div class="tabs mb-16"><a class="tab ${sub === 'siap' ? 'on' : ''}" href="#/piagam/siap">${icon('sparkles', 'ic-sm')} Siap Dibuat <span class="n">${pr.piagam.length}</span></a>
           <a class="tab ${sub === 'buat' || sub === 'edit' ? 'on' : ''}" href="#/piagam/buat/ahe">${icon('square-pen', 'ic-sm')} Buat Piagam</a>
           <a class="tab ${sub === 'daftar' ? 'on' : ''}" href="#/piagam/daftar">${icon('list', 'ic-sm')} Daftar Piagam <span class="n">${jml}</span></a></div>`;
@@ -229,7 +229,7 @@
         k === 'kelompok' ? `<select class="input" name="kelompok">${KEL.map((x) => `<option ${rec.kelompok === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`
         : k === 'tglLulus' ? `<input class="input" type="date" name="tglLulus" value="${esc(rec.tglLulus || U.today())}">`
         : `<input class="input" name="${k}" value="${esc(rec[k] || '')}" maxlength="150">`}${k === 'nomor' ? `<span class="help">${icon('info', 'ic-sm')} ${set.no_unit ? 'Otomatis dari No. Unit (' + esc(set.no_unit) + ')' : 'Isi <a href="#/pengaturan/identitas">No. Unit</a> agar nomor terisi otomatis'}</span>` : ''}</div>`).join('')}
-        <div class="row-gap"><a class="btn btn-light btn-sm" href="#/pengaturan/piagam?kal=${jenis}&dari=buat&kembali=${encodeURIComponent(location.hash)}" id="pg-atur">${icon('move')} Atur Posisi Teks</a><span class="spacer"></span>${edit ? `<a class="btn btn-light" href="#/piagam/hasil/${jenis}/${rec.id}">Batal</a>` : ''}<button class="btn btn-primary btn-lg" type="submit" id="pg-simpan">${icon('save')} Simpan & Lihat Hasil</button></div></form></div>
+        <div class="row-gap">${A.S.role === 'admin' ? `<a class="btn btn-light btn-sm" href="#/pengaturan/piagam?kal=${jenis}&dari=buat&kembali=${encodeURIComponent(location.hash)}" id="pg-atur">${icon('move')} Atur Posisi Teks</a>` : ''}<span class="spacer"></span>${edit ? `<a class="btn btn-light" href="#/piagam/hasil/${jenis}/${rec.id}">Batal</a>` : ''}<button class="btn btn-primary btn-lg" type="submit" id="pg-simpan">${icon('save')} Simpan & Lihat Hasil</button></div></form></div>
       <div class="card card-pad" style="align-self:start;position:sticky;top:80px"><div class="row-gap mb-12"><h4 style="flex:1">${icon('eye')} Pratinjau langsung</h4><span class="chip" id="pg-tpl">A4 landscape</span></div><div class="canvas-wrap"><canvas id="pg-cv"></canvas></div></div></div>`;
     const f = $('#fpg'), cv = $('#pg-cv');
     if (window.innerWidth >= 1100) $('.split', view).style.gridTemplateColumns = 'minmax(0,0.9fr) minmax(0,1.1fr)';
@@ -319,7 +319,7 @@
         <td class="t-main"><div class="person">${U.avatar(r.nama, r.siswaId || r.id, 'av-sm')}<div><div class="t-name">${esc(r.nama)}</div>${r.siswaId && R.idx().siswa[r.siswaId] ? `<div class="t-sub">${esc(R.idx().siswa[r.siswaId].kode)}</div>` : ''}</div></div></td>
         <td data-l="Jenis">${r.jenis === 'ahe' ? `<span class="chip chip-ahe">${icon('book-open')} Ahe</span>` : `<span class="chip chip-ala">${icon('calculator')} Ala · ${keyDariKelompok(r.kelompok) === 'kaliBagi' ? 'Kali & Bagi' : 'Tambah & Kurang'}</span>`}</td>
         <td data-l="Nomor" class="num small">${esc(r.nomor || '-')}</td><td data-l="Lulus">${esc(U.tgl(r.tglLulus))}</td>
-        <td class="t-actions t-right"><div class="row-gap" style="justify-content:flex-end"><a class="btn btn-light btn-sm" href="#/piagam/hasil/${r.jenis}/${r.id}">${icon('download')} Unduh</a><a class="btn btn-ghost btn-icon btn-sm" href="#/piagam/edit/${r.jenis}/${r.id}" title="Edit">${icon('pencil')}</a><button class="btn btn-danger-ghost btn-icon btn-sm" data-del="${r.jenis}|${r.id}" title="Hapus">${icon('trash-2')}</button></div></td></tr>`).join('')}</tbody></table></div>`
+        <td class="t-actions t-right"><div class="row-gap" style="justify-content:flex-end"><a class="btn btn-light btn-sm" href="#/piagam/hasil/${r.jenis}/${r.id}">${icon('download')} Unduh</a><a class="btn btn-ghost btn-icon btn-sm" href="#/piagam/edit/${r.jenis}/${r.id}" title="Edit">${icon('pencil')}</a>${A.S.role === 'admin' ? `<button class="btn btn-danger-ghost btn-icon btn-sm" data-del="${r.jenis}|${r.id}" title="Hapus">${icon('trash-2')}</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`
         : A.kosong('award', semua.length ? 'Tidak ada yang cocok' : 'Belum ada piagam', '')}</div>`;
     $('#pd-q').oninput = U.debounce((e) => { ui.q = e.target.value; A.refresh(true); const i = $('#pd-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
     $('#pd-j').onchange = (e) => { ui.jenis = e.target.value; A.render(); };

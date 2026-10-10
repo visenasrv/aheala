@@ -135,9 +135,9 @@
       const v = videoGaleri();
       return `<section class="sec alt" id="sec-video"><div class="wrap">${judulSeksi('Video Kegiatan', s)}
         ${v.length ? '' : kosongPublik('play', 'Video keseruan belajar akan segera hadir.')}<div class="vids ${v.length === 1 ? 'satu' : ''}">${v.map((g, i) => {
-          const yt = U.ytId(g.url);
-          return `<div class="vcard"><div class="vthumb" data-video="${i}">${yt ? `<img src="https://i.ytimg.com/vi/${yt}/hqdefault.jpg" alt="" loading="lazy">` : ''}
-            <span class="src ${yt ? '' : 'fb'}">${yt ? 'YouTube' : 'Facebook'}</span><span class="play">${icon('play')}</span></div><div class="vb"><span>${esc(g.judul || 'Video kegiatan')}</span>${yt ? '' : `<a class="vlink" target="_blank" rel="noopener" href="${esc(U.fbVideoUrl(g.url))}">${icon('external-link', 'ic-sm')} Tonton di Facebook</a>`}</div></div>`;
+          const vi = U.video(g.url);
+          return `<div class="vcard ${vi.tegak ? 'tegak' : ''}"><div class="vthumb ${vi.tegak ? 'tegak' : ''} src-${vi.sumber}" data-video="${i}">${vi.thumb ? `<img src="${esc(vi.thumb)}" alt="" loading="lazy">` : ''}
+            <span class="src ${vi.sumber}">${esc(vi.label)}</span><span class="play">${icon(vi.sumber === 'lain' ? 'external-link' : 'play')}</span></div><div class="vb"><span>${esc(g.judul || 'Video kegiatan')}</span>${vi.sumber === 'youtube' ? '' : `<a class="vlink" target="_blank" rel="noopener" href="${esc(vi.link)}">${icon('external-link', 'ic-sm')} Buka di ${esc(vi.label)}</a>`}</div></div>`;
         }).join('')}</div></div></section>`;
     },
     lokasi(s) {
@@ -218,11 +218,14 @@
     if (semua) semua.onclick = () => { $$('#gal figure.hidden').forEach((x) => x.classList.remove('hidden')); semua.remove(); };
     const v = videoGaleri();
     $$('[data-video]').forEach((el) => el.addEventListener('click', () => {
+      if (el.dataset.main) return;
       const g = v[+el.dataset.video];
-      const yt = U.ytId(g.url);
-      const src = yt ? `https://www.youtube.com/embed/${yt}?autoplay=1&rel=0` : U.fbEmbed(g.url, true);
-      el.innerHTML = `<iframe src="${src}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Video"></iframe>`;
-    }, { once: true }));
+      const vi = U.video(g.url);
+      if (vi.sumber === 'lain') { window.open(vi.link, '_blank', 'noopener'); return; }
+      el.innerHTML = vi.file ? `<video src="${esc(vi.file)}" controls autoplay playsinline></video>`
+        : `<iframe src="${esc(vi.embed(true))}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video" scrolling="no"></iframe>`;
+      el.dataset.main = '1';
+    }));
   }
 
   // ---------------------------------------------------------------- Formulir

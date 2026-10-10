@@ -14,7 +14,7 @@
   const Aksi = A.aksi = {};
   const salin = (p) => Object.assign({}, p);
   const riw = (s, p, jenis, dari, ke, catatan) => ({ id: U.uid(), siswaId: s.id, programId: p.id, program: p.program, jenis, dari: String(dari), ke: String(ke), tanggal: U.today(), catatan: catatan || '' });
-  Aksi.terapkan = (list, label) => {
+  Aksi.terapkan = (list, label, opsi) => {
     if (!list.length) return 0;
     const rows = list.map((x) => x.p);
     const rw = [].concat(...list.map((x) => x.riw || []));
@@ -27,7 +27,7 @@
       });
       if (A.detailCache) rw.forEach((r) => { const c = A.detailCache[r.siswaId]; if (c) c.riwayat.push(r); });
     });
-    A.kirim({ op: 'program', rows, riwayat: rw, _label: label || 'Perubahan program' });
+    A.kirim(Object.assign({ op: 'program', rows, riwayat: rw, _label: label || 'Perubahan program' }, opsi && opsi.waNaik ? { waNaik: true } : {}));
     return rows.length;
   };
   const tiapProgram = (ids, fn) => {
@@ -68,9 +68,12 @@
     const teks = hasil.length === 1
       ? `${esc(hasil[0].s.nama)} akan dinaikkan dari <b>${esc(R.LABEL[hasil[0].p.program])} Level ${hasil[0].dari}</b> ke <b>Level ${hasil[0].dari + 1}</b>.<br><span class="small muted">Status buku otomatis menjadi "belum punya buku" untuk level baru.</span>`
       : `<div class="stack-sm mt-8">${hasil.slice(0, 6).map((x) => `<div class="small">${baris(x)}</div>`).join('')}${hasil.length > 6 ? `<div class="small muted">+ ${hasil.length - 6} siswa lainnya</div>` : ''}</div>${lewati.length ? `<p class="small muted mt-8">${lewati.length} siswa dilewati (tidak aktif / sudah level akhir).</p>` : ''}`;
-    const ok = await U.confirm({ title: hasil.length === 1 ? `Naikkan ke Level ${hasil[0].dari + 1}?` : `Naikkan ${hasil.length} siswa 1 level?`, text: teks, ok: 'Iya, naikkan', batal: 'Tidak' });
+    const adaWa = hasil.filter((x) => x.s.wa).length, tplOn = A.tplAktif('tpl_wa_naik_level');
+    const cek = { label: tplOn ? `Kirim WhatsApp ucapan naik level ke orang tua <span class="muted">(${adaWa} dari ${hasil.length} punya nomor WA)</span>` : 'Kirim WhatsApp ke orang tua <span class="muted">(template "Naik Level" sedang dinonaktifkan)</span>', checked: tplOn && adaWa > 0, disabled: !tplOn || !adaWa };
+    const ok = await U.confirm({ title: hasil.length === 1 ? `Naikkan ke Level ${hasil[0].dari + 1}?` : `Naikkan ${hasil.length} siswa 1 level?`, text: teks, ok: 'Iya, naikkan', batal: 'Tidak', cek });
     if (!ok) return 0;
-    const n = Aksi.terapkan(hasil, 'Naik level');
+    const n = Aksi.terapkan(hasil, 'Naik level', { waNaik: cek.nilai });
+    if (cek.nilai) U.toast('WhatsApp naik level dikirim ke ' + adaWa + ' orang tua', 'info');
     laporan(n, lewati, hasil.length === 1 ? 'naik ke Level ' + (hasil[0].dari + 1) : 'naik 1 level', 'tidak aktif / sudah level akhir — gunakan Tuntaskan');
     return n;
   };

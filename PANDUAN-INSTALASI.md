@@ -262,7 +262,7 @@ Selama mode demo berlaku hal-hal berikut:
 | 4 | **Guru** | Tambah guru dan kata sandinya. Guru login dengan memilih namanya dari daftar. |
 | 5 | **Siswa → Impor Excel** | Unduh template, isi data siswa lama, lalu unggah. Data yang belum lengkap tetap bisa masuk dan ditandai "belum lengkap". |
 | 6 | **Hari Libur** | Tandai libur khusus (Senin–Jumat selain libur otomatis dianggap hari les). Kartu **Rekomendasi dari tanggal merah** menampilkan libur nasional & cuti bersama tahun ini dan tahun depan. Tekan **Liburkan** (atau **Liburkan semua**) lalu simpan. |
-| 7 | **Landing Page** | **Warna latar halaman** (pilihan siap pakai atau warna sendiri), foto **banner** (landscape, ideal 1920×800), teks, foto kegiatan, video, lokasi, dan footer (link Facebook/Instagram/YouTube/TikTok). Di bagian **Lokasi & Peta**, tempel link Google Maps (Bagikan → Salin link) lalu klik **Pasang**, dan titik merah muncul di peta. |
+| 7 | **Landing Page** | **Warna latar halaman** (pilihan siap pakai atau warna sendiri), foto **banner** (landscape, ideal 1920×800), teks, foto kegiatan, video (link YouTube, TikTok, Facebook, Instagram, Google Drive, Vimeo, atau file .mp4), lokasi, dan footer (link Facebook/Instagram/YouTube/TikTok). Di bagian **Lokasi & Peta**, tempel link Google Maps (Bagikan → Salin link) lalu klik **Pasang**, dan titik merah muncul di peta. |
 | 8 | **Pengaturan → Piagam** | Unggah gambar template piagam Ahe dan Ala, lalu **Atur Posisi Teks** (kalibrasi). Nomor, Kepala Unit, Unit Pembelajaran, dan Desa/Kelurahan terisi otomatis dari Identitas. |
 | 9 | **Pengaturan → WhatsApp** | Sambungkan Fonnte. Ikuti **PANDUAN-FONNTE.md** (terpisah). Tiap template pesan otomatis bisa **dinonaktifkan** satu per satu lewat sakelar di atas kotak template. |
 
@@ -283,6 +283,22 @@ Selama mode demo berlaku hal-hal berikut:
 
 - **Prompt poster libur (ChatGPT):** di **Hari Libur → Buat Prompt Poster**, pilih **tema/gaya** (Ceria, Islami, Nasional, Natal & Tahun Baru, Imlek, Lembut & damai, Liburan sekolah, Resmi), atur **warna utama & pendukung**, ucapan, dan catatan gaya. Tema terpilih otomatis dari nama libur (mis. Idulfitri → Islami). Bila logo sudah diunggah di Identitas: tekan **Unduh logo**, **Salin Prompt**, buka ChatGPT, lampirkan logo, tempel prompt, kirim.
 - **Tanggal merah:** data resmi SKB 3 Menteri untuk 2026 & 2027 sudah tertanam. Tahun berikutnya diambil otomatis dari kalender libur Indonesia milik Google. Tanggal merah hanya rekomendasi — baru menjadi libur les setelah disimpan.
+
+### D6. Wakil Admin (satu guru dengan akses tambahan)
+Di menu **Guru**, tekan **Aksi → Jadikan Wakil Admin** pada satu guru. Guru itu perlu **keluar lalu masuk lagi** (lewat login Guru seperti biasa). Hanya boleh 1 wakil; mencabut hak langsung mengakhiri sesi wakil.
+
+| Bisa | Tidak bisa |
+|---|---|
+| Absen seperti guru biasa | Mengubah data siswa, guru, kehadiran guru lain |
+| **Hari Libur:** melihat & membuat prompt poster | Menambah / mengubah / menghapus hari libur |
+| **SPP:** mencatat pembayaran sebagai **draf** | Menandai lunas & menerbitkan kuitansi (admin utama menyetujui draf di menu SPP) |
+| **Promosi** & **Landing Page** | Pengaturan, backup, WhatsApp, akun |
+| **Piagam:** membuat & mencetak | Mengatur template & posisi teks piagam, menghapus piagam |
+
+Draf pembayaran muncul di **SPP & Kuitansi → Draf pembayaran menunggu persetujuan** (angka di menu SPP). Tekan **Setujui** untuk menerbitkan kuitansi (bisa sekaligus kirim WA), atau **Tolak** dengan alasan.
+
+### D7. Poster & banner promosi (menu Promosi)
+Atur ukuran (feed, story, A4, X-banner, spanduk, atau ukuran sendiri), gaya, warna, ornamen, judul, tulisan tambahan, dan info yang dicantumkan. Unduh **logo** dan **kode QR** (menuju website atau formulir daftar), salin prompt, lalu lampirkan keduanya di ChatGPT bersama prompt. Setelah poster jadi, pindai QR-nya untuk memastikan masih bisa dibuka.
 
 ### D5. Backup & arsip data (Pengaturan → Backup Data)
 - **Buat backup sekarang:** membuat salinan utuh seluruh database ke folder **Backup** di Google Drive (folder `Manajemen Les Ahe & Ala`). Semua backup tetap tersimpan sampai Anda menghapusnya. Tombol **Buka** membuka di Google Sheets, **Excel** mengunduh .xlsx (perlu login ke akun Google pemilik aplikasi).

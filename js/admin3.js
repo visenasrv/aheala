@@ -12,12 +12,13 @@
   // HARI LIBUR KHUSUS + PROMPT POSTER CHATGPT
   // ======================================================================
   A.page('libur', {
-    title: 'Hari Libur', crumb: 'Hari Libur Khusus',
+    title: 'Hari Libur', crumb: 'Hari Libur Khusus', wakil: true,
     render(view) {
       const d = D();
       const ui = A.ui.libur = A.ui.libur || { ym: U.ymNow(), tab: 'datang', edit: null, prompt: null, rasio: '1:1' };
       const tm = A.ui.tglMerah = A.ui.tglMerah || { tahun: +U.today().slice(0, 4), data: {}, cuti: true, muat: {} };
-      muatTanggalMerah(tm, tm.tahun); muatTanggalMerah(tm, +ui.ym.slice(0, 4));
+      const bisaUbah = A.S.role === 'admin'; // wakil admin: hanya membuat prompt poster
+      if (bisaUbah) { muatTanggalMerah(tm, tm.tahun); muatTanggalMerah(tm, +ui.ym.slice(0, 4)); }
       const merahKal = {}; ((tm.data[ui.ym.slice(0, 4)] || {}).daftar || []).forEach((x) => { if (tm.cuti || x.jenis === 'libur') merahKal[x.tgl] = merahKal[x.tgl] ? merahKal[x.tgl] + ' · ' + x.nama : (x.jenis === 'cuti' ? 'Cuti bersama ' : '') + x.nama; });
       const t = U.today();
       const semua = (d.libur || []).slice().sort((a, b) => a.tglMulai.localeCompare(b.tglMulai));
@@ -38,19 +39,19 @@
       }
       const pl = semua.find((l) => l.id === ui.prompt);
       view.innerHTML = `<div class="page-head"><div><h1>Hari Libur Khusus</h1><p>Hari libur tidak dihitung pada absen guru, rekap kehadiran, dan peringatan tidak masuk. Buat prompt poster pengumuman sekali klik.</p></div>
-        <div class="actions"><button class="btn btn-primary" id="l-baru">${icon('plus')} Tambah Libur</button></div></div>
+        <div class="actions">${bisaUbah ? `<button class="btn btn-primary" id="l-baru">${icon('plus')} Tambah Libur</button>` : `<span class="chip">${icon('eye', 'ic-sm')} Lihat & buat prompt saja</span>`}</div></div>
         <div class="split"><div class="stack">
           <div class="card"><div class="card-head"><h3>${icon('calendar')} Kalender les</h3><div class="row-gap"><button class="btn btn-light btn-icon btn-sm" data-ym="-1" aria-label="Bulan sebelumnya">${icon('chevron-left')}</button><b style="min-width:120px;text-align:center">${U.bulan(ui.ym)}</b><button class="btn btn-light btn-icon btn-sm" data-ym="1" aria-label="Bulan berikutnya">${icon('chevron-right')}</button></div></div>
             <div class="card-body"><div class="row-gap mb-12 small muted"><span>Hari les: <b>${R.hariLesBulan(ui.ym).length}</b></span><span>·</span><span>Libur khusus: <b>${Array.from({ length: n }, (_, i) => ui.ym + '-' + String(i + 1).padStart(2, '0')).filter((x) => R.libur(x) && U.dow(x) % 6 !== 0).length}</b> hari</span></div>
               <div class="cal">${['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((x) => `<div class="dn">${x}</div>`).join('')}${sel}</div>
               <div class="legend mt-12"><span><i style="background:#fff;border:1px solid var(--line)"></i>Hari les</span><span><i style="background:var(--accent-700)"></i>Libur khusus</span><span><i style="background:var(--p-50)"></i>Akhir pekan</span><span><i style="background:var(--ala-50)"></i>Masuk kembali</span><span><i class="lg-merah"></i>Tanggal merah (belum diliburkan)</span></div></div></div>
-          ${kartuTanggalMerah(tm, semua, t)}
+          ${bisaUbah ? kartuTanggalMerah(tm, semua, t) : ''}
           <div class="row-gap"><h3 style="flex:1">Daftar hari libur</h3><div class="tabs"><button class="tab ${ui.tab === 'datang' ? 'on' : ''}" data-tab="datang">Mendatang <span class="n">${datang.length}</span></button><button class="tab ${ui.tab === 'arsip' ? 'on' : ''}" data-tab="arsip">Arsip <span class="n">${arsip.length}</span></button></div></div>
           ${list.length ? list.map((l, i) => { const nh = hitungHari(l); return `<div class="card card-pad" style="${ui.tab === 'datang' && i === 0 ? 'border-left:4px solid var(--accent)' : ''}">
             <div class="row-gap">${ui.tab === 'datang' && i === 0 ? '<span class="chip chip-acc">Terdekat</span>' : ''}<span class="chip">${nh} hari les diliburkan</span>${l.tampilLanding === 'ya' ? `<span class="chip chip-ala">${icon('eye')} Tampil di landing</span>` : ''}</div>
             <h3 class="mt-8" style="${ui.tab === 'arsip' ? 'text-decoration:line-through;color:var(--text-2)' : ''}">${esc(l.keterangan)}</h3>
             <div class="small mt-8">${icon('calendar', 'ic-sm')} ${esc(l.tglSelesai && l.tglSelesai !== l.tglMulai ? U.tglPanjang(l.tglMulai) + ' – ' + U.tglPanjang(l.tglSelesai) : U.tglHari(l.tglMulai))}${l.tglMasuk ? ` · <b style="color:var(--ala-700)">Masuk ${esc(U.tglHari(l.tglMasuk))}</b>` : ''}</div>
-            <div class="row-gap mt-12"><button class="btn btn-primary btn-sm" data-pr="${l.id}">${icon('sparkles')} Buat Prompt Poster</button><span class="spacer"></span><button class="btn btn-light btn-sm" data-ed="${l.id}">${icon('pencil')} Edit</button><button class="btn btn-danger-ghost btn-sm" data-del="${l.id}">${icon('trash-2')} Hapus</button></div></div>`; }).join('') : `<div class="card">${A.kosong('calendar-x', ui.tab === 'datang' ? 'Belum ada libur mendatang' : 'Arsip kosong', 'Tambahkan libur seperti Idul Fitri, libur semester, atau kegiatan lembaga.')}</div>`}
+            <div class="row-gap mt-12"><button class="btn btn-primary btn-sm" data-pr="${l.id}">${icon('sparkles')} Buat Prompt Poster</button><span class="spacer"></span>${bisaUbah ? `<button class="btn btn-light btn-sm" data-ed="${l.id}">${icon('pencil')} Edit</button><button class="btn btn-danger-ghost btn-sm" data-del="${l.id}">${icon('trash-2')} Hapus</button>` : ''}</div></div>`; }).join('') : `<div class="card">${A.kosong('calendar-x', ui.tab === 'datang' ? 'Belum ada libur mendatang' : 'Arsip kosong', 'Tambahkan libur seperti Idul Fitri, libur semester, atau kegiatan lembaga.')}</div>`}
         </div>
         <div class="stack">
           <div class="card card-pad"><h3 class="mb-12">${icon('calendar-x')} ${e.id ? 'Edit libur' : 'Tambah libur baru'}</h3><form class="form-stack" id="flibur">
@@ -63,7 +64,9 @@
           <div class="card card-pad" style="border:2px solid var(--p-100)" id="poster-card"><div class="row-gap mb-12"><span class="icon-dot acc">${icon('wand-sparkles')}</span><div style="flex:1"><h3>Prompt Poster Pengumuman</h3><div class="small muted">Untuk ChatGPT — lengkap dengan logo lembaga</div></div></div>
             ${pl ? kartuPoster(pl, ui) : A.kosong('sparkles', 'Pilih hari libur', 'Tekan "Buat Prompt Poster" pada salah satu hari libur.')}</div>
         </div></div>`;
+      if (!bisaUbah) { const kf = $('#flibur'); if (kf) kf.closest('.card').remove(); }
       const f = $('#flibur');
+      if (f) {
       const saran = () => { const s = f.tglSelesai.value || f.tglMulai.value; if (!U.isTgl(s)) { $('#l-saran').textContent = ''; return; } let x = U.addDays(s, 1), g = 0; while ((U.dow(x) === 0 || U.dow(x) === 6) && g++ < 7) x = U.addDays(x, 1); $('#l-saran').innerHTML = `Saran: <a href="#" id="l-pakai">${esc(U.tglHari(x))}</a>`; $('#l-pakai').onclick = (ev) => { ev.preventDefault(); f.tglMasuk.value = x; }; };
       f.tglMulai.onchange = () => { if (!f.tglSelesai.value || f.tglSelesai.value < f.tglMulai.value) f.tglSelesai.value = f.tglMulai.value; saran(); };
       f.tglSelesai.onchange = saran; saran();
@@ -77,8 +80,9 @@
         ui.edit = null; ui.prompt = l.id; ui.ym = l.tglMulai.slice(0, 7);
         U.toast('Hari libur disimpan · prompt poster siap disalin'); A.render();
       };
+      }
       const bt = $('[data-batal]'); if (bt) bt.onclick = () => { ui.edit = null; A.render(); };
-      $('#l-baru').onclick = () => { ui.edit = null; A.render(); setTimeout(() => $('#flibur').keterangan.focus(), 50); };
+      if ($('#l-baru')) $('#l-baru').onclick = () => { ui.edit = null; A.render(); setTimeout(() => $('#flibur').keterangan.focus(), 50); };
       $$('[data-ym]').forEach((b) => b.onclick = () => { ui.ym = U.addMonths(ui.ym, +b.dataset.ym); A.render(); });
       $$('[data-tab]').forEach((b) => b.onclick = () => { ui.tab = b.dataset.tab; A.render(); });
       $$('[data-pr]').forEach((b) => b.onclick = () => { ui.prompt = b.dataset.pr; A.render(); if (window.innerWidth < 1100) setTimeout(() => $('#l-prompt').scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); });
@@ -90,7 +94,7 @@
         A.kirim({ op: 'deleteLibur', id: l.id, _label: 'Hapus libur' });
       });
       $$('[data-rasio]').forEach((b) => b.onclick = () => { ui.rasio = b.dataset.rasio; A.render(); });
-      pasangTanggalMerah(tm, ui, semua);
+      if (bisaUbah) pasangTanggalMerah(tm, ui, semua);
       if (pl) pasangPoster(pl, ui);
     }
   });
@@ -271,6 +275,7 @@
       <div class="row-gap mt-12"><button class="btn btn-accent spacer" id="l-salin">${icon('copy')} Salin Prompt</button><a class="btn btn-light" href="https://chatgpt.com/" target="_blank" rel="noopener">${icon('external-link')} Buka ChatGPT</a></div>
       <ol class="ps-langkah mt-12">${ada ? '<li><b>Unduh logo</b> (atau Salin logo).</li>' : ''}<li><b>Salin prompt</b>, lalu buka ChatGPT.</li>${ada ? '<li>Lampirkan logo (tombol <b>+</b> / 📎 atau tempel), lalu tempel prompt dan kirim.</li>' : '<li>Tempel prompt dan kirim.</li>'}</ol>`;
   }
+  A.pngLogo = () => pngLogo();
   function pngLogo() {
     return new Promise((res, rej) => {
       const im = new Image();
@@ -360,7 +365,7 @@
     $('#lp-latar-c', el).oninput = (e) => pakai(e.target.value.toUpperCase());
   }
   A.page('landing', {
-    title: 'Landing Page', crumb: 'Kelola Landing Page',
+    title: 'Landing Page', crumb: 'Kelola Landing Page', wakil: true,
     render(view) {
       const d = D();
       const ui = A.ui.landing = A.ui.landing || { buka: 'hero', mode: 'desktop' };
@@ -462,12 +467,12 @@
         ${jenis === 'foto' ? `<div class="row-gap"><span class="chip chip-ahe">${items.length} foto</span><span class="spacer"></span><button class="btn btn-primary btn-sm" data-up-foto>${icon('upload')} Unggah foto</button><button class="btn btn-light btn-sm" data-link-foto>${icon('link')} Tambah dari link</button></div>
           <p class="help">${icon('info', 'ic-sm')} Foto dikompres otomatis (maks 1600 px) sebelum disimpan ke Google Drive.</p>
           <div class="thumbs">${items.map((g) => `<div class="thumb"><img src="${esc(g.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"><button class="x" data-del-g="${g.id}" aria-label="Hapus">${icon('trash-2', 'ic-sm')}</button><input value="${esc(g.judul)}" data-cap="${g.id}" placeholder="Keterangan foto"></div>`).join('')}</div>`
-        : `<div class="row-gap"><input class="input" id="v-url" placeholder="Tempel link YouTube / Facebook" style="flex:1"><button class="btn btn-primary" data-add-v>${icon('plus')} Tambah</button></div>
-          <p class="help">Contoh: youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/…, atau link video Facebook.</p>
-          <div class="note-box warn">${icon('triangle-alert')}<span><b>Video Facebook</b> hanya bisa diputar di website bila: (1) privasi postingannya <b>Publik</b> (ikon 🌐), (2) diunggah di <b>Halaman/Page</b> atau profil yang mengizinkan sematan, bukan di grup tertutup. Pratinjau di bawah menunjukkan apakah video bisa diputar. Paling andal: unggah juga ke <b>YouTube</b> lalu pakai link YouTube.</span></div>
-          <div class="stack-sm">${items.map((g) => { const yt = U.ytId(g.url); return `<div class="row-gap card soft card-pad" style="padding:10px">${yt ? `<img src="https://i.ytimg.com/vi/${yt}/default.jpg" alt="" style="width:80px;border-radius:8px">` : `<span class="icon-dot">${icon('facebook')}</span>`}
-            <div style="flex:1;min-width:0"><span class="chip chip-sm ${yt ? 'chip-bad' : 'chip-info'}">${yt ? 'YouTube' : 'Facebook'}</span><input class="input mt-8" style="min-height:36px" value="${esc(g.judul)}" data-cap="${g.id}" placeholder="Judul video"><div class="tiny muted ellipsis mt-8">${esc(g.url)}</div>
-              ${yt ? '' : `<details class="mt-8"><summary class="small strong" style="cursor:pointer">Cek apakah video bisa diputar</summary><div class="fb-cek mt-8"><iframe loading="lazy" title="Pratinjau video Facebook" src="${esc(U.fbEmbed(g.url))}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div><p class="tiny muted mt-8">Jika muncul "Video Tidak Tersedia", ubah privasi postingan menjadi Publik atau pakai link YouTube.</p></details>`}</div>
+        : `<div class="row-gap"><input class="input" id="v-url" placeholder="Tempel link video (YouTube, TikTok, Facebook, Instagram, Google Drive, dll.)" style="flex:1"><button class="btn btn-primary" data-add-v>${icon('plus')} Tambah</button></div>
+          <p class="help">Bisa dari mana saja: YouTube (termasuk Shorts), TikTok, Facebook, Instagram Reels, Google Drive, Vimeo, atau link file .mp4. Link lain tetap bisa — pengunjung diarahkan ke situs asalnya.</p>
+          <div class="note-box warn">${icon('triangle-alert')}<span>Video hanya bisa diputar langsung di website bila postingannya <b>Publik</b>. Untuk Google Drive, atur berbagi ke <b>"Siapa saja yang memiliki link"</b>. Pratinjau di bawah menunjukkan apakah video bisa diputar.</span></div>
+          <div class="stack-sm">${items.map((g) => { const vi = U.video(g.url); return `<div class="row-gap card soft card-pad" style="padding:10px">${vi.thumb ? `<img src="${esc(vi.thumb.replace('hqdefault', 'default'))}" alt="" style="width:80px;border-radius:8px">` : `<span class="icon-dot">${icon(vi.sumber === 'facebook' ? 'facebook' : vi.sumber === 'lain' ? 'link' : 'play')}</span>`}
+            <div style="flex:1;min-width:0"><span class="chip chip-sm vsrc-${vi.sumber}">${esc(vi.label)}</span><input class="input mt-8" style="min-height:36px" value="${esc(g.judul)}" data-cap="${g.id}" placeholder="Judul video"><div class="tiny muted ellipsis mt-8">${esc(g.url)}</div>
+              ${vi.sumber === 'youtube' ? '' : vi.sumber === 'lain' ? `<p class="tiny muted mt-8">${icon('info', 'ic-sm')} Tidak bisa diputar langsung — pengunjung diarahkan ke ${esc(vi.label)}.</p>` : `<details class="mt-8"><summary class="small strong" style="cursor:pointer">Cek apakah video bisa diputar</summary><div class="fb-cek mt-8 ${vi.tegak ? 'tegak' : ''}">${vi.file ? `<video src="${esc(vi.file)}" controls preload="metadata"></video>` : `<iframe loading="lazy" title="Pratinjau video" src="${esc(vi.embed(false))}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`}</div><p class="tiny muted mt-8">Jika video tidak muncul, ubah privasi postingan menjadi Publik atau pakai link YouTube.</p></details>`}</div>
             <button class="btn btn-danger-ghost btn-icon btn-sm" data-del-g="${g.id}">${icon('trash-2')}</button></div>`; }).join('') || '<p class="small muted">Belum ada video.</p>'}</div>`}</div>`;
       bind();
       const tambahItem = (it) => {
@@ -483,8 +488,8 @@
       const av = $('[data-add-v]', el);
       if (av) av.onclick = async () => {
         let u = $('#v-url').value.trim();
-        if (!/youtu\.?be|facebook\.com|fb\.watch/i.test(u)) return U.toast('Link harus dari YouTube atau Facebook', 'warn');
-        if (/facebook\.com\/share\/|fb\.watch/i.test(u)) { // link "Bagikan" → cari alamat asli video
+        if (!/^https?:\/\/\S+\.\S+/i.test(u)) return U.toast('Tempel link video yang diawali https://', 'warn');
+        if (/facebook\.com\/share\/|fb\.watch|vt\.tiktok\.com|vm\.tiktok\.com|tiktok\.com\/t\//i.test(u)) { // link "Bagikan" → cari alamat asli video
           av.disabled = true;
           try { const r = await U.api('normalVideo', { token: A.S.token, url: u }); if (r && r.url) u = r.url; } catch (e) { /* pakai link apa adanya */ }
           av.disabled = false;
@@ -558,9 +563,10 @@
   // PENGATURAN
   // ======================================================================
   const PRESET_WARNA = [['#6B2F8F', 'Ungu'], ['#1E3A8A', 'Biru Navy'], ['#047857', 'Hijau Zamrud'], ['#B91C1C', 'Merah Bata'], ['#0F766E', 'Toska'], ['#C2410C', 'Oranye Bata'], ['#BE185D', 'Merah Muda'], ['#1F2937', 'Arang']];
-  const TOKEN_TPL = ['{lembaga}', '{nama}', '{panggilan}', '{ortu}', '{program}', '{kode}', '{level}', '{wa}', '{bulan_tunggakan}', '{total}', '{link_kuitansi}', '{hari_absen}', '{terakhir_hadir}', '{wa_admin}'];
+  const TOKEN_TPL = ['{lembaga}', '{nama}', '{panggilan}', '{ortu}', '{program}', '{kode}', '{level}', '{wa}', '{bulan_tunggakan}', '{total}', '{link_kuitansi}', '{hari_absen}', '{terakhir_hadir}', '{level_lama}', '{wa_admin}'];
   const TPL = [['tpl_wa_daftar_ortu', 'Pendaftaran – ke Orang Tua', 'Dikirim otomatis saat formulir terkirim'], ['tpl_wa_daftar_admin', 'Pendaftaran – ke Admin', 'Notifikasi pendaftar baru'], ['tpl_wa_terima', 'Diterima – ke Orang Tua', 'Saat admin menerima pendaftar'],
-    ['tpl_wa_tunggakan', 'Tunggakan SPP 2 Bulan', 'Pemicu harian 07.00 WITA, sekali per bulan'], ['tpl_wa_absen_admin', 'Siswa Tidak Masuk – ke Admin', 'Pemicu harian, sekali per periode absen'], ['tpl_wa_kuitansi', 'Kuitansi SPP', 'Saat SPP ditandai lunas']];
+    ['tpl_wa_tunggakan', 'Tunggakan SPP 2 Bulan', 'Pemicu harian 07.00 WITA, sekali per bulan'], ['tpl_wa_absen_admin', 'Siswa Tidak Masuk – ke Admin', 'Pemicu harian, sekali per periode absen'], ['tpl_wa_kuitansi', 'Kuitansi SPP', 'Saat SPP ditandai lunas'],
+    ['tpl_wa_naik_level', 'Naik Level – ke Orang Tua', 'Saat admin menaikkan level (bisa dicentang/tidak)'], ['tpl_wa_absen_ortu', 'Tidak Masuk – ke Orang Tua', 'Pemicu harian, sekali per periode tidak hadir']];
   A.page('pengaturan', {
     title: 'Pengaturan', crumb: 'Pengaturan',
     render(view, params) {
@@ -704,7 +710,7 @@
       if (e.target.checked) set2.delete(ui.tpl); else set2.add(ui.tpl);
       simpanSet({ tpl_nonaktif: Array.from(set2).join(',') }, e.target.checked ? 'Pesan otomatis diaktifkan' : 'Pesan otomatis dinonaktifkan'); A.render();
     };
-    const contoh = { lembaga: s.nama_lembaga || s.nama_aplikasi, nama: 'Aisyah Putri', panggilan: 'Ica', ortu: 'Hendra', program: 'Les Berhitung (Ala)', kode: 'REG-2026-0012', level: '1', wa: '6281234567890', bulan_tunggakan: 'September & Oktober 2026', total: 'Rp300.000', link_kuitansi: U.urlBaseFrontend() + '#/kuitansi/contoh', hari_absen: '11', terakhir_hadir: U.tglPanjang(U.addDays(U.today(), -16)), wa_admin: s.wa_admin ? '+' + s.wa_admin : '+62812xxxx' };
+    const contoh = { lembaga: s.nama_lembaga || s.nama_aplikasi, nama: 'Aisyah Putri', panggilan: 'Ica', ortu: 'Hendra', program: 'Les Berhitung (Ala)', kode: 'REG-2026-0012', level: '3', level_lama: '2', wa: '6281234567890', bulan_tunggakan: 'September & Oktober 2026', total: 'Rp300.000', link_kuitansi: U.urlBaseFrontend() + '#/kuitansi/contoh', hari_absen: '11', terakhir_hadir: U.tglPanjang(U.addDays(U.today(), -16)), wa_admin: s.wa_admin ? '+' + s.wa_admin : '+62812xxxx' };
     const ta = $('#tpl-isi');
     const prev = () => { $('#tpl-prev').innerHTML = esc(ta.value.replace(/\{([a-z_]+)\}/g, (m, k) => contoh[k] !== undefined ? contoh[k] : m)).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/_([^_\n]+)_/g, '<i>$1</i>'); };
     prev(); ta.oninput = prev;

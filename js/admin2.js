@@ -32,7 +32,7 @@
         <div class="row-gap mb-12"><div class="tabs"><button class="tab ${ui.tab === 'aktif' ? 'on' : ''}" data-tab="aktif">Aktif <span class="n">${aktif.length}</span></button><button class="tab ${ui.tab === 'berhenti' ? 'on' : ''}" data-tab="berhenti">Berhenti <span class="n">${berhenti.length}</span></button></div>
           <div class="input-icon spacer" style="min-width:220px">${icon('search')}<input class="input" id="g-q" placeholder="Cari nama guru…" value="${esc(ui.q)}" style="min-height:42px"></div></div>
         <div class="card">${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-cards"><thead><tr><th>Guru</th><th>Tempat, tgl lahir</th><th>Masa mengajar</th><th>Mengajar ${U.bln(ym)}</th><th>Akses</th><th class="t-right" style="width:96px">Aksi</th></tr></thead><tbody>
-          ${rows.map((g) => `<tr><td class="t-main"><div class="person">${U.avatar(g.nama, g.id, '', A.foto['g_' + g.id])}<div><div class="t-name">${esc(g.nama)}</div><div class="t-sub">${esc(g.panggilan || '')}${g.wa ? ' · ' + esc(U.tampilWa(g.wa)) : ''}</div></div></div></td>
+          ${rows.map((g) => `<tr><td class="t-main"><div class="person">${U.avatar(g.nama, g.id, '', A.foto['g_' + g.id])}<div><div class="t-name">${esc(g.nama)}${d.settings.wakil_guru_id === g.id ? ` <span class="chip chip-sm chip-acc">${icon('shield-check', 'ic-sm')} Wakil Admin</span>` : ''}</div><div class="t-sub">${esc(g.panggilan || '')}${g.wa ? ' · ' + esc(U.tampilWa(g.wa)) : ''}</div></div></div></td>
             <td data-l="Lahir">${esc([g.tempatLahir, U.tgl(g.tglLahir)].filter((x) => x && x !== '-').join(', ') || '-')}${g.tglLahir ? `<div class="t-sub">${U.umur(g.tglLahir)}</div>` : ''}</td>
             <td data-l="Masa mengajar"><span class="chip chip-ahe">${esc(U.masa(g.tglMasuk, g.tglKeluar || null))}</span><div class="t-sub">Masuk ${esc(U.tgl(g.tglMasuk))}${g.tglKeluar ? ' · keluar ' + esc(U.tgl(g.tglKeluar)) : ''}</div></td>
             <td data-l="Hari mengajar"><b>${hari[g.id] || 0}</b> hari</td>
@@ -49,6 +49,7 @@
           { icon: 'pencil', label: 'Edit data guru', onClick: () => formGuru(g) },
           guruAktif(g) ? { icon: 'key-round', label: (g.punyaSandi ? 'Reset' : 'Buat') + ' kata sandi', onClick: () => resetSandi(g) } : null,
           guruAktif(g) ? { icon: 'qr-code', label: 'Link login & kode QR', onClick: () => A.bagikanLinkLogin('guru', g) } : null,
+          guruAktif(g) ? (D().settings.wakil_guru_id === g.id ? { icon: 'shield-check', label: 'Cabut hak Wakil Admin', onClick: () => aturWakil(g, false) } : { icon: 'shield-check', label: 'Jadikan Wakil Admin', onClick: () => aturWakil(g, true) }) : null,
           '-',
           { icon: 'trash-2', label: 'Hapus guru', danger: true, onClick: () => hapusGuru(g) }
         ]);
@@ -65,6 +66,18 @@
     });
     m.$('[data-c]').onclick = async () => { if (await U.salin(sandi)) U.toast('Kata sandi disalin'); };
     m.$('[data-n]').onclick = () => m.close();
+  }
+  // Wakil admin: satu guru dengan akses tambahan terbatas
+  async function aturWakil(g, jadikan) {
+    const lama = R.idx().guru[D().settings.wakil_guru_id];
+    const li = (ok, t) => `<li><span class="ic" style="color:var(--${ok ? 'ok-700' : 'bad'})">${icon(ok ? 'check' : 'x', 'ic-sm')}</span><span>${t}</span></li>`;
+    const teks = jadikan
+      ? `<b>${esc(g.nama)}</b> tetap bisa absen seperti biasa, dan mendapat akses tambahan:<ul class="demo-list mt-12">${li(1, 'Membuat prompt poster hari libur (tanpa menambah/mengubah hari libur)')}${li(1, 'Mencatat pembayaran SPP sebagai <b>draf</b> — lunas & kuitansi tetap oleh admin utama')}${li(1, 'Prompt poster/banner promosi & mengelola landing page')}${li(1, 'Membuat & mencetak piagam (template & posisi teks tetap oleh admin utama)')}${li(0, 'Tidak bisa mengubah siswa, guru, kehadiran guru lain, pengaturan, backup')}</ul>${lama && lama.id !== g.id ? `<p class="small mt-12">Wakil admin saat ini (<b>${esc(lama.nama)}</b>) akan diganti — hanya boleh 1 wakil.</p>` : ''}<p class="small muted mt-12">${esc(g.panggilan || g.nama)} perlu <b>keluar lalu masuk lagi</b> agar menu wakil admin muncul.</p>`
+      : `<b>${esc(g.nama)}</b> kembali menjadi guru biasa. Sesi wakil admin-nya langsung berakhir dan perlu masuk lagi.`;
+    if (!(await U.confirm({ title: jadikan ? 'Jadikan ' + (g.panggilan || g.nama) + ' Wakil Admin?' : 'Cabut hak Wakil Admin?', text: teks, ok: jadikan ? 'Iya, jadikan wakil' : 'Iya, cabut', batal: 'Tidak', danger: !jadikan }))) return;
+    A.mut((d) => { d.settings.wakil_guru_id = jadikan ? g.id : ''; });
+    A.kirim({ op: 'saveSettings', values: { wakil_guru_id: jadikan ? g.id : '' }, _label: 'Wakil admin' });
+    U.toast(jadikan ? g.nama + ' sekarang Wakil Admin' : 'Hak wakil admin dicabut');
   }
   async function resetSandi(g) {
     if (!(await U.confirm({ title: (g.punyaSandi ? 'Reset' : 'Buat') + ' kata sandi ' + (g.panggilan || g.nama) + '?', text: g.punyaSandi ? 'Kata sandi lama tidak berlaku lagi.' : 'Guru bisa langsung login absen setelah menerima sandi ini.', ok: g.punyaSandi ? 'Reset sandi' : 'Buat sandi' }))) return;
@@ -411,8 +424,9 @@
   // SPP & KUITANSI
   // ======================================================================
   A.page('spp', {
-    title: 'SPP & Kuitansi', crumb: 'SPP & Kuitansi', nav: 'spp',
+    title: 'SPP & Kuitansi', crumb: 'SPP & Kuitansi', nav: 'spp', wakil: true,
     render(view, params, qs) {
+      if (A.S.role === 'wakil') return sppWakil(view);
       const d = D();
       const ui = A.ui.spp = A.ui.spp || { q: '', prog: '', st: '', tunggak: false, sel: new Set(), wa: true, qsKey: '', hal: 1 };
       const rg = /^(\d{4}-\d{2})_(\d{4}-\d{2})$/.exec(params[0] || '');
@@ -439,6 +453,7 @@
       view.innerHTML = `<div class="page-head"><div><h1>SPP & Kuitansi</h1><p>Tandai pembayaran, terbitkan kuitansi resmi, dan pantau tunggakan.</p></div>
         <div class="actions"><div class="row-gap" style="gap:4px"><a class="btn btn-light btn-icon btn-sm" href="#/spp/${U.addMonths(ym, -1)}" aria-label="Bulan sebelumnya">${icon('chevron-left')}</a>${U.tombolPeriode('s-per', ym, ym)}<a class="btn btn-light btn-icon btn-sm" href="#/spp/${U.addMonths(ym, 1)}" aria-label="Bulan berikutnya">${icon('chevron-right')}</a></div>
           <button class="btn btn-light btn-sm" id="s-tarif">${icon('settings')} Atur Tarif</button><button class="btn btn-light btn-sm" data-ex="xlsx" style="color:#15803D">${icon('file-spreadsheet')} Excel</button><button class="btn btn-light btn-sm" data-ex="pdf" style="color:var(--bad-700)">${icon('file-text')} PDF</button></div></div>
+        ${kartuDraf()}
         ${tarif ? '' : `<div class="note-box warn mb-16">${icon('triangle-alert')}<span><b>Tarif SPP untuk ${U.bulan(ym)} belum diatur.</b> Tagihan dan peringatan tunggakan baru dihitung setelah tarif ditetapkan. <a href="#" id="s-tarif2" style="font-weight:700">Atur tarif sekarang</a></span></div>`}
         <div class="stats four mb-16"><div class="card stat"><div class="top"><span class="lbl">Tarif aktif</span><span class="icon-dot sm">${icon('wallet')}</span></div><div class="val sm">${U.rp(tarif)}<span class="small muted">/bln</span></div><div class="sub">Jatuh tempo tgl ${+d.settings.spp_jatuh_tempo || 10}</div></div>
           <div class="card stat"><div class="top"><span class="lbl">Wajib bayar</span><span class="icon-dot sm ala">${icon('users')}</span></div><div class="val">${rk.wajib}</div><div class="sub">siswa aktif bulan ini</div></div>
@@ -467,7 +482,7 @@
       $('#s-st').onchange = (e) => { ui.st = e.target.value; ul(); };
       $('#s-tg').onclick = () => { ui.tunggak = !ui.tunggak; ul(); };
       $('#s-per').onclick = () => pilihPeriodeSpp(ym, ym);
-      $('#s-tarif').onclick = aturTarif; const t2 = $('#s-tarif2'); if (t2) t2.onclick = (e) => { e.preventDefault(); aturTarif(); };
+      pasangDraf(); $('#s-tarif').onclick = aturTarif; const t2 = $('#s-tarif2'); if (t2) t2.onclick = (e) => { e.preventDefault(); aturTarif(); };
       $$('[data-sel]').forEach((c) => c.onchange = () => { c.checked ? ui.sel.add(c.dataset.sel) : ui.sel.delete(c.dataset.sel); ul(); });
       const all = $('[data-all]'); if (all) all.onchange = () => { halRows.filter((r) => !r.l).forEach((r) => all.checked ? ui.sel.add(r.s.id) : ui.sel.delete(r.s.id)); ul(); };
       const ps = $('#s-pilih-semua'); if (ps) ps.onclick = () => { rows.filter((r) => !r.l).forEach((r) => ui.sel.add(r.s.id)); ul(); };
@@ -568,26 +583,35 @@
     const terbuka = $('[data-kw-modal="' + data.kuitansi.id + '"]');
     if (terbuka && A._kwModal) A._kwModal.refresh();
   };
-  A.bayarSiswa = (s, ymAwal) => {
+  // mode: biasa (admin) | 'draf' (wakil admin mencatat, menunggu persetujuan) | 'setujui' (admin menyetujui draf)
+  A.bayarSiswa = (s, ymAwal, opsiMode) => {
     if (!s) return;
+    const om = opsiMode || {}, draf = om.mode === 'draf', setujui = om.mode === 'setujui', df = om.draf || null;
     const tg = R.tunggakan(s);
     const now = U.ymNow();
     const opsi = new Set(tg.belum);
     for (let i = -2; i <= 2; i++) { const b = U.addMonths(now, i); if (R.ditagih(s, b) || (i >= 0 && R.tarif(b) > 0)) opsi.add(b); }
-    const awal = Array.isArray(ymAwal) ? ymAwal : ymAwal ? [ymAwal] : null;
+    const awal = df ? String(df.bulan).split(',').filter(Boolean) : Array.isArray(ymAwal) ? ymAwal : ymAwal ? [ymAwal] : null;
     if (awal) awal.forEach((b) => opsi.add(b));
     const list = Array.from(opsi).filter((b) => R.tarif(b) > 0).sort();
-    if (!list.length) { U.toast('Tarif SPP belum diatur', 'warn'); return aturTarif(); }
+    if (!list.length) { U.toast('Tarif SPP belum diatur', 'warn'); return A.S.role === 'admin' ? aturTarif() : null; }
     const pilihAwal = new Set(awal || (tg.belum.length ? tg.belum : [now]));
+    // bulan yang sudah ada di draf lain yang masih menunggu
+    const diDraf = {};
+    (D().drafSpp || []).forEach((x) => { if (x.status === 'menunggu' && x.siswaId === s.id && (!df || x.id !== df.id)) String(x.bulan).split(',').forEach((b) => { diDraf[b] = x; }); });
     const m = U.modal({
-      title: 'Bayar SPP — ' + s.nama, icon: 'receipt', sub: esc(s.kode) + (R.prog(s.id) ? ' · ' + esc(R.LABEL[R.prog(s.id).program]) + ' Level ' + esc(R.prog(s.id).level) : ''),
-      body: `<div class="tiny strong muted mb-12" style="letter-spacing:.06em">PILIH BULAN YANG DIBAYAR</div><div class="stack-sm" id="by-list">${list.map((b) => { const l = R.lunas(s.id, b); const tunggak = tg.belum.includes(b); return `<label class="card card-pad row-gap" style="padding:12px 14px;cursor:${l ? 'default' : 'pointer'};${tunggak ? 'background:#FFF6F6;border-color:#FBD5D5' : ''}">
-          <span class="check"><input type="checkbox" value="${b}" ${l ? 'disabled checked' : pilihAwal.has(b) ? 'checked' : ''}><span class="box">${icon('check')}</span></span>
-          <div style="flex:1"><b>${U.bulan(b)}</b><div class="tiny ${l ? '' : tunggak ? '' : 'muted'}" style="${tunggak && !l ? 'color:var(--bad-700);font-weight:700' : ''}">${l ? 'Sudah lunas ' + esc(U.tgl(l.tglBayar)) : tunggak ? 'TUNGGAKAN' : b > now ? 'Bayar di muka' : b === now ? 'Bulan berjalan' : ''}</div></div><b class="num">${U.rp(R.tarif(b))}</b></label>`; }).join('')}</div>
+      title: (draf ? 'Catat Pembayaran (Draf) — ' : setujui ? 'Setujui Draf — ' : 'Bayar SPP — ') + s.nama, icon: 'receipt',
+      sub: esc(s.kode) + (R.prog(s.id) ? ' · ' + esc(R.LABEL[R.prog(s.id).program]) + ' Level ' + esc(R.prog(s.id).level) : ''),
+      body: `${draf ? `<div class="note-box mb-12">${icon('info')}<span>Pembayaran dicatat sebagai <b>draf</b>. Status lunas & kuitansi baru terbit setelah <b>disetujui admin utama</b>.</span></div>` : ''}
+        ${setujui ? `<div class="note-box mb-12">${icon('user-check')}<span>Dicatat oleh <b>${esc(df.namaPembuat || '-')}</b> · ${esc(U.tgl(String(df.createdAt).slice(0, 10)))}${df.catatan ? '<br>Catatan: ' + esc(df.catatan) : ''}</span></div>` : ''}
+        <div class="tiny strong muted mb-12" style="letter-spacing:.06em">PILIH BULAN YANG DIBAYAR</div><div class="stack-sm" id="by-list">${list.map((b) => { const l = R.lunas(s.id, b); const tunggak = tg.belum.includes(b); const dd = draf && diDraf[b]; return `<label class="card card-pad row-gap" style="padding:12px 14px;cursor:${l || dd ? 'default' : 'pointer'};${tunggak ? 'background:#FFF6F6;border-color:#FBD5D5' : ''}">
+          <span class="check"><input type="checkbox" value="${b}" ${l ? 'disabled checked' : dd ? 'disabled' : pilihAwal.has(b) ? 'checked' : ''}><span class="box">${icon('check')}</span></span>
+          <div style="flex:1"><b>${U.bulan(b)}</b><div class="tiny ${l ? '' : tunggak ? '' : 'muted'}" style="${tunggak && !l ? 'color:var(--bad-700);font-weight:700' : ''}">${l ? 'Sudah lunas ' + esc(U.tgl(l.tglBayar)) : dd ? 'Sudah ada di draf, menunggu admin' : tunggak ? 'TUNGGAKAN' : b > now ? 'Bayar di muka' : b === now ? 'Bulan berjalan' : ''}</div></div><b class="num">${U.rp(R.tarif(b))}</b></label>`; }).join('')}</div>
         <div class="card soft card-pad mt-16 row-gap"><div style="flex:1"><div class="small muted">Total pembayaran</div><div class="tiny muted" id="by-n"></div></div><div style="font-family:var(--f-head);font-weight:900;font-size:26px;color:var(--p-700)" id="by-total" class="num"></div></div>
-        <div class="grid-2 mt-16"><div class="field"><label>Metode</label><select class="input" id="by-metode"><option>Tunai</option><option>Transfer Bank</option><option>QRIS / E-wallet</option></select></div><div class="field"><label>Tanggal bayar</label><input class="input" type="date" id="by-tgl" value="${U.today()}" max="${U.today()}"></div></div>
-        <label class="check mt-16"><input type="checkbox" id="by-wa" ${s.wa && A.tplAktif('tpl_wa_kuitansi') ? 'checked' : 'disabled'}><span class="box">${icon('check')}</span><span class="small">Buat 1 kuitansi & kirim link via WhatsApp ke ${s.wa ? esc(U.tampilWa(s.wa)) : '(nomor WA belum ada)'}${A.tplAktif('tpl_wa_kuitansi') ? '' : ' <span class="muted">— pesan kuitansi dinonaktifkan di Pengaturan → WhatsApp</span>'}</span></label>`,
-      foot: `<button class="btn btn-light" data-n>Batal</button><button class="btn btn-primary" data-ok>${icon('receipt')} Simpan & Terbitkan Kuitansi</button>`
+        <div class="grid-2 mt-16"><div class="field"><label>Metode</label><select class="input" id="by-metode">${['Tunai', 'Transfer Bank', 'QRIS / E-wallet'].map((x) => `<option ${df && df.metode === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div><div class="field"><label>Tanggal bayar</label><input class="input" type="date" id="by-tgl" value="${esc(df && df.tglBayar ? df.tglBayar : U.today())}" max="${U.today()}"></div></div>
+        ${draf ? `<div class="field mt-16"><label for="by-cat">Catatan untuk admin (opsional)</label><input class="input" id="by-cat" maxlength="300" placeholder="Contoh: dibayar oleh ibunya, uang pas"></div>`
+          : `<label class="check mt-16"><input type="checkbox" id="by-wa" ${s.wa && A.tplAktif('tpl_wa_kuitansi') ? 'checked' : 'disabled'}><span class="box">${icon('check')}</span><span class="small">Buat 1 kuitansi & kirim link via WhatsApp ke ${s.wa ? esc(U.tampilWa(s.wa)) : '(nomor WA belum ada)'}${A.tplAktif('tpl_wa_kuitansi') ? '' : ' <span class="muted">— pesan kuitansi dinonaktifkan di Pengaturan → WhatsApp</span>'}</span></label>`}`,
+      foot: `<button class="btn btn-light" data-n>Batal</button><button class="btn btn-primary" data-ok>${icon(draf ? 'send' : 'receipt')} ${draf ? 'Kirim Draf ke Admin' : setujui ? 'Setujui & Terbitkan Kuitansi' : 'Simpan & Terbitkan Kuitansi'}</button>`
     });
     const hitung = () => {
       const p = m.$$('#by-list input:checked:not(:disabled)').map((i) => i.value);
@@ -599,11 +623,77 @@
     m.$('[data-n]').onclick = () => m.close();
     m.$('[data-ok]').onclick = () => {
       const p = m.$$('#by-list input:checked:not(:disabled)').map((i) => i.value);
-      const kw = catatBayar(s, p, { metode: m.$('#by-metode').value, tglBayar: m.$('#by-tgl').value || U.today(), kirimWA: m.$('#by-wa').checked });
+      const metode = m.$('#by-metode').value, tglBayar = m.$('#by-tgl').value || U.today();
+      if (draf) {
+        const rec = { id: U.uid(), siswaId: s.id, bulan: p.join(','), total: String(p.reduce((a, b) => a + R.tarif(b), 0)), metode, tglBayar, catatan: m.$('#by-cat').value.trim(), status: 'menunggu', dibuatOleh: A.S.user.id, namaPembuat: A.S.user.nama, createdAt: U.nowIso(), diprosesAt: '', kuitansiId: '' };
+        A.mut((d) => { d.drafSpp = (d.drafSpp || []).concat([rec]); });
+        A.kirim({ op: 'drafBayar', draf: Object.assign({}, rec, { bulan: p }), _label: 'Draf pembayaran' });
+        m.close(); U.toast('Draf pembayaran ' + s.nama + ' dikirim ke admin (' + p.length + ' bulan)');
+        return;
+      }
+      const kw = catatBayar(s, p, { metode, tglBayar, kirimWA: m.$('#by-wa').checked });
+      if (setujui && df) {
+        A.kirim({ op: 'setujuiDraf', id: df.id, kuitansiId: kw ? kw.id : '', _label: 'Setujui draf' });
+        A.mut((d) => { const x = (d.drafSpp || []).find((y) => y.id === df.id); if (x) { x.status = 'disetujui'; x.diprosesAt = U.nowIso(); x.kuitansiId = kw ? kw.id : ''; } });
+      }
       m.close();
       if (kw) { U.toast('Pembayaran ' + s.nama + ' tercatat (' + p.length + ' bulan)'); A.lihatKuitansi(kw); }
     };
   };
+  // ---------------- Draf pembayaran dari wakil admin ----------------
+  function kartuDraf() {
+    const list = (D().drafSpp || []).filter((x) => x.status === 'menunggu').sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    if (!list.length) return '';
+    const idx = R.idx().siswa;
+    return `<div class="card mb-16 draf-card"><div class="card-head"><h3>${icon('notebook-pen')} Draf pembayaran menunggu persetujuan</h3><span class="chip chip-warn">${list.length}</span></div>
+      <div class="ll-list">${list.map((x) => { const s = idx[x.siswaId]; return `<div class="ll-item" style="padding:12px 18px">${U.avatar(s ? s.nama : '?', x.siswaId, 'av-sm')}<div class="t"><b>${esc(s ? s.nama : 'Siswa terhapus')}</b>
+          <div class="tiny muted">${esc(U.daftarBulan(String(x.bulan).split(',')))} · <b class="num">${U.rp(+x.total)}</b> · ${esc(x.metode)} · dicatat ${esc(x.namaPembuat)} ${esc(U.tgl(String(x.createdAt).slice(0, 10)))}</div>${x.catatan ? `<div class="tiny">${icon('message-circle', 'ic-sm')} ${esc(x.catatan)}</div>` : ''}</div>
+          <button class="btn btn-light btn-sm" data-draf-tolak="${esc(x.id)}">${icon('x', 'ic-sm')}<span class="d-only"> Tolak</span></button><button class="btn btn-primary btn-sm" data-draf-ok="${esc(x.id)}" ${s ? '' : 'disabled'}>${icon('check', 'ic-sm')} Setujui</button></div>`; }).join('')}</div></div>`;
+  }
+  function pasangDraf() {
+    const cari = (id) => (D().drafSpp || []).find((x) => x.id === id);
+    $$('[data-draf-ok]').forEach((b) => b.onclick = () => { const x = cari(b.dataset.drafOk); A.bayarSiswa(R.idx().siswa[x.siswaId], null, { mode: 'setujui', draf: x }); });
+    $$('[data-draf-tolak]').forEach((b) => b.onclick = async () => {
+      const x = cari(b.dataset.drafTolak); const s = R.idx().siswa[x.siswaId];
+      const alasan = await U.prompt({ title: 'Tolak draf ' + (s ? s.nama : ''), icon: 'circle-x', label: 'Alasan (opsional, terlihat oleh wakil admin)', ok: 'Tolak draf' });
+      if (alasan === null) return;
+      A.mut((d) => { const y = (d.drafSpp || []).find((z) => z.id === x.id); if (y) { y.status = 'ditolak'; y.diprosesAt = U.nowIso(); if (alasan) y.catatan = alasan; } });
+      A.kirim({ op: 'tolakDraf', id: x.id, catatan: alasan || x.catatan, _label: 'Tolak draf' });
+      U.toast('Draf ditolak');
+    });
+  }
+  // ---------------- Halaman SPP untuk wakil admin (hanya draf) ----------------
+  function sppWakil(view) {
+    const ui = A.ui.sppW = A.ui.sppW || { q: '', semua: false };
+    const ym = U.ymNow();
+    const milik = (D().drafSpp || []).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    const tunggu = milik.filter((x) => x.status === 'menunggu');
+    const q = ui.q.toLowerCase();
+    const rows = R.siswaTerdaftar().filter((s) => R.ditagih(s, ym) || R.tunggakan(s).belum.length).map((s) => ({ s, l: R.lunas(s.id, ym), tg: R.tunggakan(s) }))
+      .filter((x) => (ui.semua || q || !x.l || x.tg.belum.length) && (!q || [x.s.nama, x.s.panggilan, x.s.kode, x.s.ortu].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => (a.l ? 1 : 0) - (b.l ? 1 : 0) || a.s.nama.localeCompare(b.s.nama));
+    const idx = R.idx().siswa;
+    const stCls = { menunggu: 'chip-warn', disetujui: 'chip-ok', ditolak: 'chip-bad' };
+    view.innerHTML = `<div class="page-head"><div><h1>SPP — Catat Pembayaran</h1><p>Catat pembayaran yang Anda terima sebagai <b>draf</b>. Admin utama yang menandai lunas & menerbitkan kuitansi.</p></div></div>
+      <div class="split"><div class="card"><div class="card-head" style="flex-wrap:wrap;gap:10px"><h3>${icon('users')} Siswa · ${esc(U.bulan(ym))}</h3><div class="seg"><button class="${ui.semua ? '' : 'on'}" data-sw="0">Belum bayar</button><button class="${ui.semua ? 'on' : ''}" data-sw="1">Semua</button></div><div class="input-icon" style="flex:1 1 180px;max-width:260px">${icon('search')}<input class="input" id="sw-q" placeholder="Cari siswa…" value="${esc(ui.q)}"></div></div>
+        ${rows.length ? `<div class="ll-list">${rows.map((x) => { const adaDraf = tunggu.some((d) => d.siswaId === x.s.id); return `<div class="ll-item" style="padding:10px 18px">${U.avatar(x.s.nama, x.s.id, 'av-sm')}<div class="t"><b>${esc(x.s.nama)}</b>
+            <div class="tiny muted">${x.l ? `<span style="color:var(--ok-700);font-weight:700">Lunas ${esc(U.bulan(ym))}</span>` : x.tg.belum.length ? `<span style="color:var(--bad-700);font-weight:700">Belum bayar: ${esc(U.daftarBulan(x.tg.belum))}</span>` : 'Belum bayar bulan ini'}${adaDraf ? ' · <span class="chip chip-sm chip-warn">ada draf</span>' : ''}</div></div>
+            <button class="btn ${x.l && !x.tg.belum.length ? 'btn-light' : 'btn-primary'} btn-sm" data-catat="${esc(x.s.id)}">${icon('notebook-pen', 'ic-sm')} Catat</button></div>`; }).join('')}</div>` : A.kosong('users', 'Tidak ada siswa', '')}</div>
+        <div class="card bk-utama" style="align-self:start"><div class="card-head"><h3>${icon('history')} Draf saya</h3><span class="chip">${tunggu.length} menunggu</span></div>
+          ${milik.length ? `<div class="ll-list">${milik.map((x) => { const s = idx[x.siswaId]; return `<div class="ll-item" style="padding:10px 18px"><div class="t"><b>${esc(s ? s.nama : '-')}</b>
+              <div class="tiny muted">${esc(U.daftarBulan(String(x.bulan).split(',')))} · <b class="num">${U.rp(+x.total)}</b> · ${esc(U.tgl(String(x.createdAt).slice(0, 10)))}</div>${x.status === 'ditolak' && x.catatan ? `<div class="tiny" style="color:var(--bad-700)">Alasan: ${esc(x.catatan)}</div>` : ''}</div>
+              <span class="chip chip-sm ${stCls[x.status] || ''}">${esc({ menunggu: 'Menunggu', disetujui: 'Disetujui', ditolak: 'Ditolak' }[x.status] || x.status)}</span>
+              ${x.status === 'menunggu' ? `<button class="btn btn-ghost btn-icon btn-sm" data-batal-draf="${esc(x.id)}" title="Batalkan draf" aria-label="Batalkan draf">${icon('trash-2', 'ic-sm')}</button>` : ''}</div>`; }).join('')}</div>`
+            : A.kosong('notebook-pen', 'Belum ada draf', 'Tekan "Catat" pada siswa yang membayar.')}</div></div>`;
+    $('#sw-q').oninput = U.debounce((e) => { ui.q = e.target.value; A.refresh(true); const i = $('#sw-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200);
+    $$('[data-sw]').forEach((b) => b.onclick = () => { ui.semua = b.dataset.sw === '1'; A.render(); });
+    $$('[data-catat]').forEach((b) => b.onclick = () => A.bayarSiswa(R.idx().siswa[b.dataset.catat], null, { mode: 'draf' }));
+    $$('[data-batal-draf]').forEach((b) => b.onclick = async () => {
+      if (!(await U.confirm({ title: 'Batalkan draf ini?', text: 'Draf dihapus dan tidak dikirim ke admin.', ok: 'Batalkan draf', batal: 'Tidak', danger: true }))) return;
+      A.mut((d) => { d.drafSpp = (d.drafSpp || []).filter((x) => x.id !== b.dataset.batalDraf); });
+      A.kirim({ op: 'hapusDraf', id: b.dataset.batalDraf, _label: 'Batalkan draf' });
+    });
+  }
   async function batalLunas(s, ym) {
     if (!(await U.confirm({ title: 'Batalkan pembayaran ' + U.bulan(ym) + '?', text: s.nama + ' akan kembali berstatus belum bayar. Kuitansi ikut dihapus bila tidak mencakup bulan lain.', ok: 'Batalkan lunas', danger: true }))) return;
     const l = R.lunas(s.id, ym);

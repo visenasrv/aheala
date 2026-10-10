@@ -374,14 +374,14 @@
     if (typeof o === 'string') o = { text: o };
     const m = U.modal({
       title: o.title || 'Konfirmasi', icon: o.danger ? 'triangle-alert' : 'info', iconCls: o.danger ? 'bad' : '',
-      body: `<p>${o.text || ''}</p>${o.ketik ? `<div class="field mt-16"><label>Ketik <b>${U.esc(o.ketik)}</b> untuk melanjutkan</label><input class="input" data-k autocomplete="off"></div>` : ''}`,
+      body: `<p>${o.text || ''}</p>${o.cek ? `<label class="check mt-16"><input type="checkbox" data-cek ${o.cek.checked ? 'checked' : ''} ${o.cek.disabled ? 'disabled' : ''}><span class="box">${U.icon('check')}</span><span>${o.cek.label}</span></label>` : ''}${o.ketik ? `<div class="field mt-16"><label>Ketik <b>${U.esc(o.ketik)}</b> untuk melanjutkan</label><input class="input" data-k autocomplete="off"></div>` : ''}`,
       foot: `<button class="btn btn-light" data-n>${U.esc(o.batal || 'Batal')}</button><button class="btn ${o.danger ? 'btn-danger' : 'btn-primary'}" data-y ${o.ketik ? 'disabled' : ''}>${U.esc(o.ok || 'Ya, lanjutkan')}</button>`,
       onClose: () => resolve(false)
     });
     const y = m.$('[data-y]');
     if (o.ketik) m.$('[data-k]').oninput = (e) => { y.disabled = e.target.value.trim().toLowerCase() !== o.ketik.trim().toLowerCase(); };
     m.$('[data-n]').onclick = () => m.close();
-    y.onclick = () => { resolve(true); m.close(true); };
+    y.onclick = () => { if (o.cek) o.cek.nilai = !!(m.$('[data-cek]') || {}).checked; resolve(true); m.close(true); };
   });
   U.prompt = (o) => new Promise((resolve) => {
     let hasil = null;
@@ -500,6 +500,25 @@
     return u;
   };
   U.fbEmbed = (url, auto) => 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(U.fbVideoUrl(url)) + '&show_text=false&width=734' + (auto ? '&autoplay=true' : '');
+  // Kenali sumber video dari link apa saja (YouTube, Facebook, TikTok, Instagram, Google Drive, Vimeo, file video, lainnya)
+  U.video = (url) => {
+    const u = String(url || '').trim();
+    const yt = U.ytId(u);
+    if (yt) return { sumber: 'youtube', label: 'YouTube', embed: (a) => `https://www.youtube.com/embed/${yt}?rel=0${a ? '&autoplay=1' : ''}`, thumb: `https://i.ytimg.com/vi/${yt}/hqdefault.jpg`, link: u };
+    if (/facebook\.com|fb\.watch/i.test(u)) return { sumber: 'facebook', label: 'Facebook', embed: (a) => U.fbEmbed(u, a), link: U.fbVideoUrl(u) };
+    let m = u.match(/tiktok\.com\/(?:@[^/]+\/video|v|embed(?:\/v2)?|player\/v1)\/(\d{8,})/i);
+    if (m) return { sumber: 'tiktok', label: 'TikTok', tegak: true, embed: (a) => `https://www.tiktok.com/player/v1/${m[1]}?rel=0&description=0${a ? '&autoplay=1' : ''}`, link: u };
+    if (/tiktok\.com/i.test(u)) return { sumber: 'lain', label: 'TikTok', link: u };
+    m = u.match(/instagram\.com\/(reels?|p|tv)\/([A-Za-z0-9_-]+)/i);
+    if (m) return { sumber: 'instagram', label: 'Instagram', tegak: true, embed: () => `https://www.instagram.com/${m[1] === 'reels' ? 'reel' : m[1]}/${m[2]}/embed`, link: u };
+    m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([A-Za-z0-9_-]{10,})/i);
+    if (m) return { sumber: 'drive', label: 'Google Drive', embed: () => `https://drive.google.com/file/d/${m[1]}/preview`, link: u };
+    m = u.match(/vimeo\.com\/(?:video\/)?(\d{5,})/i);
+    if (m) return { sumber: 'vimeo', label: 'Vimeo', embed: (a) => `https://player.vimeo.com/video/${m[1]}${a ? '?autoplay=1' : ''}`, link: u };
+    if (/\.(mp4|webm|ogv|ogg|mov|m4v)(\?|#|$)/i.test(u)) return { sumber: 'file', label: 'Video', file: u, link: u };
+    let host = ''; try { host = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { /* biarkan */ }
+    return { sumber: 'lain', label: host || 'Tautan', link: u };
+  };
   U.ytId = (url) => { if (!/youtu\.?be/i.test(String(url || ''))) return ''; const m = String(url || '').match(/(?:youtu\.be\/|v=|shorts\/|embed\/|live\/)([A-Za-z0-9_-]{6,})/); return m ? m[1] : ''; };
   U.urlBaseFrontend = () => location.origin + location.pathname.replace(/[^/]*$/, '');
 })();
